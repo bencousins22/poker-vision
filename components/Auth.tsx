@@ -65,10 +65,12 @@ export const Auth: React.FC<Props> = ({ onSuccess, onCancel }) => {
 
         <form onSubmit={handleLogin} className="space-y-4">
             <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">Email Address</label>
+                <label htmlFor="auth-email" className="block text-xs font-semibold text-gray-500 uppercase mb-2">Email Address</label>
                 <div className="relative">
                     <Mail className="absolute left-3 top-3 w-5 h-5 text-gray-600" />
                     <input 
+                        id="auth-email"
+                        name="email"
                         type="email" 
                         required
                         className="w-full bg-gray-950 border border-gray-800 rounded-lg py-3 pl-10 pr-4 text-white focus:border-poker-gold focus:ring-1 focus:ring-poker-gold transition-colors outline-none"
@@ -80,10 +82,12 @@ export const Auth: React.FC<Props> = ({ onSuccess, onCancel }) => {
             </div>
 
             <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">Password</label>
+                <label htmlFor="auth-password" className="block text-xs font-semibold text-gray-500 uppercase mb-2">Password</label>
                 <div className="relative">
                     <Lock className="absolute left-3 top-3 w-5 h-5 text-gray-600" />
                     <input 
+                        id="auth-password"
+                        name="password"
                         type="password" 
                         required
                         className="w-full bg-gray-950 border border-gray-800 rounded-lg py-3 pl-10 pr-4 text-white focus:border-poker-gold focus:ring-1 focus:ring-poker-gold transition-colors outline-none"

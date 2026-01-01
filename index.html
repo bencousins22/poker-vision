@@ -87,6 +87,11 @@
         border: 1px solid rgba(255, 255, 255, 0.08);
       }
     </style>
+    <!-- Polyfill for process/node modules often expected by libs in browser environments -->
+    <script>
+      window.process = { env: { NODE_ENV: 'development' } };
+      window.global = window;
+    </script>
   <script type="importmap">
 {
   "imports": {
@@ -105,6 +110,6 @@
 </head>
   <body class="bg-background text-zinc-100 h-screen overflow-hidden antialiased selection:bg-poker-emerald selection:text-white">
     <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
+    <script type="module" src="./index.tsx"></script>
   </body>
 </html>

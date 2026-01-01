@@ -156,6 +156,7 @@ export interface UserSettings {
   savedRanges: PokerRange[];
   gcp?: GCPSettings;
   ai: AISettings;
+  youtubeApiKey?: string;
 }
 
 export interface User {

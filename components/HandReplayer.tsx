@@ -670,7 +670,7 @@ export const HandReplayer: React.FC<Props> = ({ hand, onAnalyzeSpot }) => {
                  <div className="absolute left-4 top-2 text-[10px] font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1">
                      <TrendingUp className="w-3 h-3" /> Equity
                  </div>
-                 <div className="flex-1 h-16 mt-2 ml-4">
+                 <div className="flex-1 h-full mt-2 ml-4 relative min-w-0">
                     <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={equityTimeline} onClick={(e) => {
                             if (e.activePayload && e.activePayload[0]) {

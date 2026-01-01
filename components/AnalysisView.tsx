@@ -271,7 +271,15 @@ export const AnalysisView: React.FC = () => {
                                 file ? 'border-poker-emerald/50 bg-poker-emerald/5' : 'border-zinc-800 hover:border-zinc-600 hover:bg-zinc-800/50'
                             }`}
                         >
-                            <input type="file" ref={fileInputRef} className="hidden" accept="video/*" onChange={(e) => { setFile(e.target.files?.[0] || null); if(url) setUrl(''); }} />
+                            <input 
+                                id="video-upload"
+                                name="videoFile"
+                                type="file" 
+                                ref={fileInputRef} 
+                                className="hidden" 
+                                accept="video/*" 
+                                onChange={(e) => { setFile(e.target.files?.[0] || null); if(url) setUrl(''); }} 
+                            />
                             {file ? (
                                 <div className="flex flex-col items-center gap-2 animate-in zoom-in duration-300">
                                     <FileVideo className="w-6 h-6 text-poker-emerald" />
@@ -289,10 +297,13 @@ export const AnalysisView: React.FC = () => {
 
                         {/* URL Input */}
                         <div className="relative group">
+                            <label htmlFor="video-url" className="sr-only">YouTube URL</label>
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                 <Youtube className="h-4 w-4 text-zinc-600 group-focus-within:text-red-500 transition-colors" />
                             </div>
                             <input 
+                                id="video-url"
+                                name="videoUrl"
                                 type="text" 
                                 placeholder="YouTube URL..."
                                 className="w-full bg-black/40 border border-zinc-800 rounded-xl py-3 pl-10 pr-3 text-xs text-white focus:border-poker-emerald focus:ring-1 focus:ring-poker-emerald transition-all shadow-inner"
@@ -303,11 +314,13 @@ export const AnalysisView: React.FC = () => {
 
                         {/* Format Select */}
                         <div className="space-y-1">
-                            <label className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-1">
+                            <label htmlFor="site-format" className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-1">
                                 <Settings2 className="w-3 h-3" /> Protocol
                             </label>
                             <div className="relative">
                                 <select 
+                                    id="site-format"
+                                    name="siteFormat"
                                     className="w-full bg-black/40 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-zinc-600 appearance-none"
                                     value={siteFormat}
                                     onChange={(e) => setSiteFormat(e.target.value)}

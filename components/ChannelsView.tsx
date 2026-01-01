@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { usePoker } from '../App';
 import { ChannelVideo, QueueStatus, YouTubeChannel, HandHistory } from '../types';
 import { searchChannels, getChannelVideos, getChannelDetails, getFeaturedVideos, FEATURED_CHANNELS } from '../services/youtube';
-import { Youtube, Plus, Play, Clock, CheckCircle, AlertCircle, Loader2, ListVideo, Zap, Trash2, Search, Radio, MonitorPlay, Eye, ChevronLeft, ChevronRight, Flame, Signal, Calendar, Layout, PlayCircle, History, X } from 'lucide-react';
+import { Youtube, Plus, Play, Clock, CheckCircle, AlertCircle, Loader2, ListVideo, Zap, Trash2, Search, Radio, MonitorPlay, Eye, ChevronLeft, ChevronRight, Flame, Signal, Calendar, Layout, PlayCircle, History, X, AlertTriangle } from 'lucide-react';
 
 // --- Sub-components for Performance Optimization ---
 
@@ -124,8 +124,9 @@ const VideoSection: React.FC<{
     hands: HandHistory[],
     queue: any[],
     setSelectedHand: (h: HandHistory) => void,
-    setViewMode: (v: any) => void
-}> = ({ title, icon: Icon, videos, loading, onAnalyze, onQueue, hands, queue, setSelectedHand, setViewMode }) => {
+    setViewMode: (v: any) => void,
+    error?: string
+}> = ({ title, icon: Icon, videos, loading, onAnalyze, onQueue, hands, queue, setSelectedHand, setViewMode, error }) => {
     const scrollRef = useRef<HTMLDivElement>(null);
 
     const scroll = (dir: 'left' | 'right') => {
@@ -135,16 +136,30 @@ const VideoSection: React.FC<{
         }
     };
 
+    if (error) {
+        return (
+            <div className="p-6 bg-red-900/10 border border-red-900/30 rounded-xl flex items-center gap-4 text-red-400">
+                <AlertTriangle className="w-6 h-6" />
+                <div>
+                    <h3 className="font-bold text-sm">Failed to load {title}</h3>
+                    <p className="text-xs opacity-70">{error}</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-4 animate-in slide-in-from-bottom-4 duration-700">
             <div className="flex items-center justify-between px-1">
                 <h2 className="text-lg font-bold text-white flex items-center gap-2">
                     <Icon className="w-5 h-5 text-poker-gold" /> {title}
                 </h2>
-                <div className="flex gap-2">
-                    <button onClick={() => scroll('left')} className="p-1.5 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"><ChevronLeft className="w-4 h-4" /></button>
-                    <button onClick={() => scroll('right')} className="p-1.5 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"><ChevronRight className="w-4 h-4" /></button>
-                </div>
+                {videos.length > 0 && (
+                    <div className="flex gap-2">
+                        <button onClick={() => scroll('left')} className="p-1.5 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"><ChevronLeft className="w-4 h-4" /></button>
+                        <button onClick={() => scroll('right')} className="p-1.5 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"><ChevronRight className="w-4 h-4" /></button>
+                    </div>
+                )}
             </div>
             
             <div 
@@ -155,7 +170,7 @@ const VideoSection: React.FC<{
                 {loading ? (
                     Array(5).fill(0).map((_, i) => <VideoSkeleton key={i} />)
                 ) : (
-                    videos.map(video => {
+                    videos.length > 0 ? videos.map(video => {
                         // Check if analyzed
                         const existingHand = hands.find(h => h.videoUrl === video.url);
                         
@@ -175,7 +190,11 @@ const VideoSection: React.FC<{
                                 onQueue={onQueue} 
                             />
                         );
-                    })
+                    }) : (
+                        <div className="w-full text-center text-zinc-600 text-sm py-8 italic border border-dashed border-zinc-800 rounded-xl">
+                            No videos available or channel not found.
+                        </div>
+                    )
                 )}
             </div>
         </div>
@@ -194,25 +213,32 @@ export const ChannelsView: React.FC = () => {
     const [channelVideos, setChannelVideos] = useState<ChannelVideo[]>([]);
     const [loadingFeatured, setLoadingFeatured] = useState(true);
     const [loadingChannel, setLoadingChannel] = useState(false);
+    
+    // Error States
+    const [featuredError, setFeaturedError] = useState<string | null>(null);
+    const [channelError, setChannelError] = useState<string | null>(null);
 
     // Initial Load
     useEffect(() => {
         let mounted = true;
         const init = async () => {
             try {
-                const feats = await getFeaturedVideos();
+                const feats = await getFeaturedVideos(user?.settings?.youtubeApiKey);
                 if (mounted) {
                     setFeaturedVideos(feats);
                     setLoadingFeatured(false);
                 }
-            } catch (e) {
+            } catch (e: any) {
                 console.error(e);
-                if (mounted) setLoadingFeatured(false);
+                if (mounted) {
+                    setFeaturedError(e.message || "Failed to load featured videos");
+                    setLoadingFeatured(false);
+                }
             }
         };
         init();
         return () => { mounted = false; };
-    }, []);
+    }, [user?.settings?.youtubeApiKey]);
 
     // Load Channel Videos
     const loadChannel = async (channelId: string) => {
@@ -220,11 +246,13 @@ export const ChannelsView: React.FC = () => {
         setLoadingChannel(true);
         setSearchResults([]); // Close search dropdown
         setSearchQuery('');
+        setChannelError(null);
         try {
-            const vids = await getChannelVideos(channelId);
+            const vids = await getChannelVideos(channelId, user?.settings?.youtubeApiKey);
             setChannelVideos(vids);
-        } catch (e) {
+        } catch (e: any) {
             console.error(e);
+            setChannelError(e.message || "Failed to load channel videos");
         } finally {
             setLoadingChannel(false);
         }
@@ -235,8 +263,10 @@ export const ChannelsView: React.FC = () => {
         if (!searchQuery.trim()) return;
         setIsSearching(true);
         try {
-            const results = await searchChannels(searchQuery);
+            const results = await searchChannels(searchQuery, user?.settings?.youtubeApiKey);
             setSearchResults(results);
+        } catch(e: any) {
+            alert(`Search Failed: ${e.message}`);
         } finally {
             setIsSearching(false);
         }
@@ -266,6 +296,8 @@ export const ChannelsView: React.FC = () => {
                     <form onSubmit={handleSearch} className="relative w-full max-w-md">
                         <div className="relative group">
                             <input 
+                                id="channel-search"
+                                name="query"
                                 type="text" 
                                 placeholder="Search channels..." 
                                 className="w-full bg-zinc-900 border border-zinc-800 rounded-full py-2 pl-10 pr-4 text-xs text-white focus:border-poker-gold focus:ring-1 focus:ring-poker-gold transition-all placeholder-zinc-600"
@@ -313,8 +345,23 @@ export const ChannelsView: React.FC = () => {
                 {/* Scrollable Content */}
                 <div className="flex-1 overflow-y-auto p-6 space-y-10 scrollbar-thin scrollbar-thumb-zinc-800">
                     
+                    {/* Featured Error State */}
+                    {featuredError && !activeChannelId && (
+                        <div className="max-w-2xl mx-auto mt-10 p-6 bg-red-950/20 border border-red-900/50 rounded-2xl flex flex-col items-center text-center gap-3">
+                            <AlertTriangle className="w-10 h-10 text-red-500" />
+                            <h3 className="text-lg font-bold text-red-400">YouTube API Error</h3>
+                            <p className="text-sm text-zinc-400 max-w-md">{featuredError}</p>
+                            <p className="text-xs text-zinc-500 mt-2">
+                                Tip: Go to <strong>Settings &gt; External API Keys</strong> and add your own YouTube Data API key to fix quota limits.
+                            </p>
+                            <button onClick={() => setViewMode('profile')} className="px-4 py-2 bg-red-900/30 hover:bg-red-900/50 text-white rounded-lg text-xs font-bold transition-colors">
+                                Open Settings
+                            </button>
+                        </div>
+                    )}
+
                     {/* Hero Spotlight */}
-                    {!activeChannelId && heroVideo && (
+                    {!activeChannelId && heroVideo && !featuredError && (
                         <div className="relative w-full aspect-[21/9] max-h-[400px] rounded-3xl overflow-hidden group shadow-2xl border border-white/5 animate-in fade-in duration-1000">
                             <img src={heroVideo.thumbnail} className="w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity duration-700" alt="Hero" />
                             <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-black/50 to-transparent"></div>
@@ -355,28 +402,36 @@ export const ChannelsView: React.FC = () => {
                                 </div>
                                 {loadingChannel && <Loader2 className="w-5 h-5 text-poker-gold animate-spin" />}
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                                {channelVideos.map(video => {
-                                    const existingHand = hands.find(h => h.videoUrl === video.url);
-                                    return (
-                                        <div key={video.id} className="flex justify-center">
-                                            <VideoCard 
-                                                video={video} 
-                                                isInQueue={queue.some(q => q.id === video.id)} 
-                                                isAnalyzed={!!existingHand}
-                                                onAnalyze={launchAnalysis} 
-                                                onReview={() => { if(existingHand) { setSelectedHand(existingHand); setViewMode('review'); } }}
-                                                onQueue={addToQueue} 
-                                            />
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                            
+                            {channelError ? (
+                                <div className="p-8 text-center text-red-400 border border-red-900/30 bg-red-950/10 rounded-xl">
+                                    <p className="font-bold">Error loading channel</p>
+                                    <p className="text-sm opacity-70 mt-1">{channelError}</p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                    {channelVideos.map(video => {
+                                        const existingHand = hands.find(h => h.videoUrl === video.url);
+                                        return (
+                                            <div key={video.id} className="flex justify-center">
+                                                <VideoCard 
+                                                    video={video} 
+                                                    isInQueue={queue.some(q => q.id === video.id)} 
+                                                    isAnalyzed={!!existingHand}
+                                                    onAnalyze={launchAnalysis} 
+                                                    onReview={() => { if(existingHand) { setSelectedHand(existingHand); setViewMode('review'); } }}
+                                                    onQueue={addToQueue} 
+                                                />
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
                     )}
 
                     {/* Trending Rows */}
-                    {!activeChannelId && (
+                    {!activeChannelId && !featuredError && (
                         <>
                             <VideoSection 
                                 title="Trending High Stakes" 
@@ -389,6 +444,7 @@ export const ChannelsView: React.FC = () => {
                                 queue={queue}
                                 setSelectedHand={setSelectedHand}
                                 setViewMode={setViewMode}
+                                error={featuredError || undefined}
                             />
 
                             {/* Additional Categories using mock filtering for demo */}
@@ -403,6 +459,7 @@ export const ChannelsView: React.FC = () => {
                                 queue={queue}
                                 setSelectedHand={setSelectedHand}
                                 setViewMode={setViewMode}
+                                error={featuredError || undefined}
                             />
                         </>
                     )}

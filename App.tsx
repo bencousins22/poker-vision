@@ -1,4 +1,4 @@
-import React, { useState, useEffect, createContext, useContext, useRef } from 'react';
+import React, { useState, useEffect, createContext, useContext, useCallback } from 'react';
 import { HistorySidebar } from './components/HistorySidebar';
 import { AnalysisView } from './components/AnalysisView';
 import { StatsDashboard } from './components/StatsDashboard';
@@ -14,27 +14,63 @@ import { SpotTrainer } from './components/SpotTrainer';
 import { ToastContainer } from './components/Toast';
 import { getHands, deleteHand as deleteHandService, updateHand as updateHandService, saveUser, getUser, removeUser, clearDatabase } from './services/storage';
 import { HandHistory, ViewMode, User, PokerContextType, QueueItem, ChannelVideo, Toast } from './types';
-import { LayoutDashboard, Search, BrainCircuit, LogOut, User as UserIcon, Menu, PlayCircle, CreditCard, Settings, ChevronLeft, Tv, Eye, Sparkles, X, FlaskConical, Target } from 'lucide-react';
-import { DEFAULT_RANGES } from './services/pokerLogic';
+import { LayoutDashboard, Search, BrainCircuit, LogOut, User as UserIcon, Menu, PlayCircle, CreditCard, Settings, ChevronLeft, Tv, Eye, Sparkles, X, FlaskConical, Target, AlertTriangle, RefreshCcw, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, MessageSquare } from 'lucide-react';
+
+// --- Error Boundary ---
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean, error: Error | null }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("Uncaught error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-screen bg-[#09090b] text-white p-6 text-center">
+          <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-6 border border-red-500/20">
+            <AlertTriangle className="w-8 h-8 text-red-500" />
+          </div>
+          <h2 className="text-2xl font-bold mb-2">Something went wrong</h2>
+          <p className="text-zinc-400 mb-6 max-w-md text-sm">{this.state.error?.message || "An unexpected error occurred."}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="flex items-center gap-2 px-6 py-2 bg-white text-black rounded-full font-bold text-sm hover:bg-zinc-200 transition-colors"
+          >
+            <RefreshCcw className="w-4 h-4" /> Reload App
+          </button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 // 1. Create Context
 const PokerContext = createContext<PokerContextType | null>(null);
 
-// 2. Custom Hook for consumption
+// 2. Custom Hook
 export const usePoker = () => {
   const context = useContext(PokerContext);
   if (!context) throw new Error("usePoker must be used within a PokerProvider");
   return context;
 };
 
-// 3. Main App Shell
+// 3. Main App Shell (Consumer)
 const AppContent: React.FC = () => {
   const { user, setUser, selectedHand, setSelectedHand, viewMode, setViewMode, analyzeSpot } = usePoker();
   const [showLogin, setShowLogin] = useState(false);
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
 
-  // Auto-open coach when analysis is requested
   useEffect(() => {
     const handleAnalyzeSpot = () => {
         if (!rightSidebarOpen) setRightSidebarOpen(true);
@@ -43,25 +79,11 @@ const AppContent: React.FC = () => {
     return () => window.removeEventListener('analyze-spot', handleAnalyzeSpot);
   }, [rightSidebarOpen]);
 
-  // Handle Strategy View Logic (it opens the sidebar)
   useEffect(() => {
     if (viewMode === 'strategy') {
         if (!rightSidebarOpen) setRightSidebarOpen(true);
     }
   }, [viewMode, rightSidebarOpen]);
-
-  // Determine scaling style
-  const appStyle = user?.settings ? {
-      transform: `scale(${user.settings.appScale})`,
-      transformOrigin: 'top center',
-      height: `${100 / user.settings.appScale}vh`,
-      width: `${100 / user.settings.appScale}vw`
-  } : {};
-
-  // UI Density Class - apply mostly to text size or inner padding, avoid layout breaking margins
-  const densityClass = user?.settings?.uiDensity === 'compact' ? 'text-xs' 
-                     : user?.settings?.uiDensity === 'spacious' ? '' 
-                     : ''; 
 
   if (!user) {
     return (
@@ -77,7 +99,14 @@ const AppContent: React.FC = () => {
     );
   }
 
-  // Hand Review View (Replayer + Raw)
+  // App container style based on settings
+  const appStyle: React.CSSProperties = user.settings?.appScale ? {
+      transform: `scale(${user.settings.appScale})`,
+      transformOrigin: 'top center',
+      height: `${100 / user.settings.appScale}vh`,
+      width: `${100 / user.settings.appScale}vw`
+  } : {};
+
   const renderReviewView = () => {
     if (!selectedHand) {
       return (
@@ -99,8 +128,6 @@ const AppContent: React.FC = () => {
     return (
         <div className="flex-1 p-4 lg:p-6 overflow-hidden bg-background animate-fade-in h-full flex flex-col">
             <div className="max-w-[1920px] mx-auto w-full h-full flex flex-col gap-4">
-                
-                {/* Header */}
                 <div className="flex items-center justify-between shrink-0 bg-zinc-900/50 p-3 rounded-2xl border border-zinc-800/50 backdrop-blur-sm">
                      <div className="flex items-center gap-4">
                          <div className="p-2 bg-poker-gold/10 rounded-lg">
@@ -117,7 +144,6 @@ const AppContent: React.FC = () => {
                              </div>
                          </div>
                      </div>
-                    
                     <div className="flex items-center gap-3">
                         <div className="px-3 py-1 bg-poker-green/10 text-poker-green rounded-full text-[10px] font-bold border border-poker-green/20 flex items-center gap-1 shadow-[0_0_10px_rgba(16,185,129,0.1)]">
                             <Eye className="w-3 h-3" /> Vision Verified
@@ -131,14 +157,12 @@ const AppContent: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Content */}
                 <div className="flex flex-col xl:flex-row gap-4 flex-1 min-h-0">
                     <div className="flex-1 bg-black rounded-[2rem] shadow-2xl overflow-hidden ring-1 ring-white/5 relative">
                          <HandReplayer hand={selectedHand} onAnalyzeSpot={analyzeSpot} />
                     </div>
-
-                    <div className="w-full xl:w-80 bg-surface rounded-3xl border border-border overflow-hidden shrink-0 flex flex-col shadow-xl h-48 xl:h-auto">
-                         <div className="px-4 py-3 border-b border-border bg-zinc-900/80 backdrop-blur flex justify-between items-center shrink-0">
+                    <div className="w-full xl:w-80 bg-zinc-950 rounded-3xl border border-zinc-800 overflow-hidden shrink-0 flex flex-col shadow-xl h-48 xl:h-auto">
+                         <div className="px-4 py-3 border-b border-zinc-800 bg-zinc-900/80 backdrop-blur flex justify-between items-center shrink-0">
                              <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
                                 <span className="w-1.5 h-1.5 rounded-full bg-poker-gold"></span> Raw History
                              </h3>
@@ -192,261 +216,216 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div style={appStyle} className="flex h-screen bg-background text-zinc-100 overflow-hidden font-sans selection:bg-poker-gold/30 selection:text-white transition-transform duration-300">
-      
-      {/* Left Sidebar (History) */}
-      <div className={`${leftSidebarOpen ? 'w-72 translate-x-0' : 'w-0 -translate-x-full opacity-0 overflow-hidden'} transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)] border-r border-border bg-surface flex flex-col shrink-0 relative z-30 shadow-2xl`}>
-         <HistorySidebar />
-      </div>
-
-      {/* Center Content */}
-      <div className="flex-1 flex flex-col min-w-0 bg-background relative z-0 h-full">
+      <div className="flex h-screen w-screen bg-[#050505] text-white overflow-hidden font-sans" style={appStyle}>
         
-        {/* Navbar */}
-        <header className="h-14 px-4 border-b border-border/50 glass flex items-center justify-between shrink-0 sticky top-0 z-20 bg-background/80 backdrop-blur-xl">
-            <div className="flex items-center gap-4">
-                <button 
-                    onClick={() => setLeftSidebarOpen(!leftSidebarOpen)}
-                    className={`p-1.5 rounded-lg transition-all duration-200 border border-transparent ${!leftSidebarOpen ? 'bg-zinc-800 text-white border-zinc-700 shadow-sm' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'}`}
-                    title="Toggle History"
-                >
-                    <Menu className="w-4 h-4" />
-                </button>
-                
-                <div className="h-6 w-px bg-zinc-800/50 mx-2"></div>
-
-                <nav className="flex items-center bg-zinc-900/50 p-1 rounded-lg border border-zinc-800/50">
-                    {[
-                        { id: 'analyze', icon: Search, label: 'Vision' },
-                        { id: 'review', icon: PlayCircle, label: 'Replayer' },
-                        { id: 'channels', icon: Tv, label: 'Channels' },
-                        { id: 'tracker', icon: LayoutDashboard, label: 'Tracker' },
-                        { id: 'trainer', icon: Target, label: 'Trainer' },
-                        { id: 'tools', icon: FlaskConical, label: 'Lab' },
-                    ].map(item => (
-                        <button
-                            key={item.id}
-                            onClick={() => { 
-                              setViewMode(item.id as ViewMode); 
-                            }}
-                            className={`relative flex items-center gap-2 px-3 py-1.5 rounded-md text-[11px] font-bold transition-all duration-300 group overflow-hidden ${
-                                viewMode === item.id 
-                                ? 'text-black bg-white shadow-lg shadow-white/10 scale-105' 
-                                : 'text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800'
-                            }`}
-                        >
-                            <item.icon className={`w-3 h-3 transition-colors ${viewMode === item.id ? 'text-black' : 'group-hover:text-zinc-200'}`} />
-                            <span className="hidden lg:block">{item.label}</span>
-                        </button>
-                    ))}
-                </nav>
-            </div>
-            
-            <div className="flex items-center gap-3">
-                {/* Mobile Toggle for Right Sidebar */}
-                <button 
-                    onClick={() => setRightSidebarOpen(!rightSidebarOpen)}
-                    className={`p-1.5 rounded-lg transition-all duration-200 md:hidden ${rightSidebarOpen ? 'text-poker-gold bg-zinc-800 shadow-md' : 'text-zinc-400 hover:text-white'}`}
-                >
-                    <BrainCircuit className="w-4 h-4" />
-                </button>
-
-                {user.subscription === 'free' && (
-                    <button 
-                        onClick={() => { setViewMode('pricing'); }}
-                        className="hidden md:flex text-[10px] font-bold bg-gradient-to-r from-zinc-900 to-black border border-zinc-800 text-white px-3 py-1.5 rounded-full hover:border-poker-gold/50 hover:shadow-[0_0_15px_rgba(251,191,36,0.2)] transition-all items-center gap-2 group"
-                    >
-                        <Sparkles className="w-3 h-3 text-poker-gold group-hover:animate-pulse" /> Upgrade
-                    </button>
-                )}
-
-                <div className="h-6 w-px bg-zinc-800 hidden md:block"></div>
-
-                <div className="flex items-center gap-3 cursor-pointer group p-1 pr-3 rounded-xl hover:bg-zinc-900/50 transition-colors border border-transparent hover:border-zinc-800" onClick={() => { setViewMode('profile'); }}>
-                    <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-zinc-700 to-zinc-900 border border-zinc-600 flex items-center justify-center shadow-lg group-hover:border-poker-gold/50 transition-all">
-                        <UserIcon className="w-3.5 h-3.5 text-zinc-300 group-hover:text-white" />
-                    </div>
-                    <div className="text-left hidden md:block">
-                        <div className="text-xs font-bold text-zinc-200 group-hover:text-white transition-colors">{user.name}</div>
-                    </div>
-                </div>
-            </div>
-        </header>
-
-        {/* View Content */}
-        <main className={`flex-1 overflow-hidden relative flex flex-col ${densityClass}`}>
-            {renderContent()}
-        </main>
-      </div>
-
-      {/* Right Sidebar (Global Coach) */}
-      <div className={`${rightSidebarOpen ? 'w-80 translate-x-0' : 'w-0 translate-x-full opacity-0 overflow-hidden'} transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)] border-l border-border bg-surface flex flex-col shrink-0 relative z-30 shadow-[0_0_50px_rgba(0,0,0,0.5)]`}>
-          {rightSidebarOpen && (
-              <div className="absolute top-4 -left-3 z-50">
-                 <button 
-                    onClick={() => setRightSidebarOpen(false)}
-                    className="bg-zinc-900 border border-zinc-700 text-zinc-400 p-1.5 rounded-full shadow-lg hover:text-white hover:bg-zinc-800 transition-all hover:scale-110 active:scale-95"
-                 >
-                     <ChevronLeft className="w-3 h-3" />
-                 </button>
-              </div>
-          )}
-          <StrategyCoach />
-      </div>
-
-      {/* Toggle Open Button for Right Sidebar when closed */}
-      {!rightSidebarOpen && (
-          <div className="absolute top-16 right-0 z-40">
-              <button 
-                  onClick={() => setRightSidebarOpen(true)}
-                  className="bg-zinc-900/90 backdrop-blur-md border-l border-t border-b border-zinc-700 text-poker-gold p-2 rounded-l-lg shadow-lg hover:pl-3 transition-all group"
-                  title="Open Strategy Coach"
-              >
-                  <BrainCircuit className="w-4 h-4 group-hover:animate-pulse" />
-              </button>
+        {/* Nav Rail */}
+        <div className="w-16 flex flex-col items-center py-6 border-r border-zinc-800 bg-[#050505] z-30 shrink-0">
+          <div className="w-10 h-10 bg-gradient-to-br from-poker-gold to-yellow-600 rounded-xl flex items-center justify-center mb-8 shadow-lg shrink-0">
+             <span className="font-black text-black text-xs">PV</span>
           </div>
-      )}
-    </div>
+
+          <nav className="flex-1 flex flex-col gap-4 w-full px-2 overflow-y-auto no-scrollbar">
+             {[
+               { id: 'analyze', icon: Tv, label: 'Vision' },
+               { id: 'review', icon: PlayCircle, label: 'Review' },
+               { id: 'channels', icon: LayoutDashboard, label: 'Channels' },
+               { id: 'tracker', icon: Sparkles, label: 'Stats' },
+               { id: 'tools', icon: FlaskConical, label: 'Lab' },
+               { id: 'trainer', icon: Target, label: 'Train' },
+               { id: 'strategy', icon: BrainCircuit, label: 'Coach' },
+             ].map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => { setViewMode(item.id as ViewMode); if(item.id === 'review' || item.id === 'tracker') setLeftSidebarOpen(true); }}
+                  className={`group relative w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
+                    viewMode === item.id 
+                    ? 'bg-zinc-800 text-white shadow-md' 
+                    : 'text-zinc-500 hover:bg-zinc-900 hover:text-zinc-300'
+                  }`}
+                  title={item.label}
+                >
+                  <item.icon className={`w-5 h-5 ${viewMode === item.id ? 'text-poker-gold' : ''}`} />
+                  <div className="absolute left-full ml-3 px-2 py-1 bg-zinc-800 text-white text-[10px] font-bold rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 border border-zinc-700">
+                      {item.label}
+                  </div>
+                </button>
+             ))}
+          </nav>
+
+          <div className="mt-auto flex flex-col gap-4 w-full px-2 pt-4 border-t border-zinc-800">
+             <button onClick={() => setViewMode('pricing')} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${viewMode === 'pricing' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:bg-zinc-900'}`}>
+                <CreditCard className="w-5 h-5" />
+             </button>
+             <button onClick={() => setViewMode('profile')} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${viewMode === 'profile' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:bg-zinc-900'}`}>
+                {user.subscription === 'elite' ? <div className="w-6 h-6 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/50 flex items-center justify-center text-[10px] font-bold">{user.name.charAt(0)}</div> : <UserIcon className="w-5 h-5" />}
+             </button>
+          </div>
+        </div>
+
+        {/* Left Sidebar (History) */}
+        <div className={`border-r border-zinc-800 bg-[#050505] transition-all duration-300 ease-in-out flex flex-col z-20 ${leftSidebarOpen ? 'w-80' : 'w-0 opacity-0'} overflow-hidden`}>
+             <div className="h-full w-80">
+                <HistorySidebar />
+             </div>
+        </div>
+        
+        {/* Toggle Left */}
+        <button 
+            onClick={() => setLeftSidebarOpen(!leftSidebarOpen)} 
+            className="absolute bottom-6 left-[70px] z-40 p-1.5 bg-zinc-900 border border-zinc-700 rounded-full text-zinc-500 hover:text-white transition-colors shadow-lg"
+            style={{ transform: leftSidebarOpen ? 'translateX(305px)' : 'translateX(0)' }}
+        >
+            {leftSidebarOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
+        </button>
+
+        {/* Main Content */}
+        <main className="flex-1 flex flex-col min-w-0 bg-[#0a0a0a] relative z-10">
+           {renderContent()}
+        </main>
+
+        {/* Toggle Right */}
+        <button 
+            onClick={() => setRightSidebarOpen(!rightSidebarOpen)} 
+            className="absolute bottom-6 right-6 z-40 p-2 bg-zinc-900 border border-zinc-700 rounded-full text-zinc-500 hover:text-white transition-colors shadow-lg"
+            style={{ transform: rightSidebarOpen ? 'translateX(-330px)' : 'translateX(0)' }}
+        >
+           {rightSidebarOpen ? <PanelRightClose className="w-5 h-5" /> : <MessageSquare className="w-5 h-5" />}
+        </button>
+
+        {/* Right Sidebar (Strategy Coach) */}
+        <div className={`border-l border-zinc-800 bg-[#050505] transition-all duration-300 ease-in-out flex flex-col z-20 ${rightSidebarOpen ? 'w-[360px]' : 'w-0 opacity-0'} overflow-hidden`}>
+             <div className="h-full w-[360px]">
+                <StrategyCoach />
+             </div>
+        </div>
+
+      </div>
   );
 };
 
+// 4. App Provider
 const App: React.FC = () => {
-  const [user, setUserState] = useState<User | null>(getUser());
-  const [hands, setHands] = useState<HandHistory[]>([]);
-  const [selectedHand, setSelectedHand] = useState<HandHistory | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>('analyze');
-  const [activeVideoUrl, setActiveVideoUrl] = useState<string | null>(null);
-  
-  // Queue state
-  const [queue, setQueue] = useState<QueueItem[]>([]);
-  const [isQueueProcessing, setIsQueueProcessing] = useState(false);
-  
-  // Toasts
-  const [toasts, setToasts] = useState<Toast[]>([]);
+    const [user, setUser] = useState<User | null>(() => getUser());
+    const [hands, setHands] = useState<HandHistory[]>([]);
+    const [selectedHand, setSelectedHand] = useState<HandHistory | null>(null);
+    const [viewMode, setViewMode] = useState<ViewMode>('analyze');
+    const [activeVideoUrl, setActiveVideoUrl] = useState<string | null>(null);
+    const [queue, setQueue] = useState<QueueItem[]>([]);
+    const [isQueueProcessing, setIsQueueProcessing] = useState(false);
+    const [toasts, setToasts] = useState<Toast[]>([]);
+    const [labContext, setLabContext] = useState<any>({});
 
-  // Lab context
-  const [labContext, setLabContext] = useState<any>({});
+    useEffect(() => {
+        if (user) {
+            saveUser(user);
+        } else {
+            removeUser();
+        }
+    }, [user]);
 
-  // Load hands on mount
-  useEffect(() => {
-    setHands(getHands());
-  }, []);
+    useEffect(() => {
+        setHands(getHands());
+    }, []);
 
-  const setUser = (u: User | null) => {
-    if (u) saveUser(u);
-    else removeUser();
-    setUserState(u);
-  };
+    const addToast = useCallback((toast: Omit<Toast, 'id'>) => {
+        const id = crypto.randomUUID();
+        setToasts(prev => [...prev, { ...toast, id }]);
+    }, []);
 
-  const loadHands = () => {
-    setHands(getHands());
-  };
+    const removeToast = useCallback((id: string) => {
+        setToasts(prev => prev.filter(t => t.id !== id));
+    }, []);
 
-  const addHand = (hand: HandHistory) => {
-    setHands(prev => [hand, ...prev]);
-  };
+    const loadHands = useCallback(() => {
+        setHands(getHands());
+    }, []);
 
-  const updateHand = (id: string, updates: Partial<HandHistory>) => {
-    const updated = updateHandService(id, updates);
-    setHands(updated);
-    if (selectedHand?.id === id) {
-      setSelectedHand(prev => prev ? { ...prev, ...updates } : null);
-    }
-  };
+    const addHand = useCallback((hand: HandHistory) => {
+        setHands(prev => [hand, ...prev]);
+    }, []);
 
-  const deleteHand = (id: string) => {
-    deleteHandService(id);
-    setHands(prev => prev.filter(h => h.id !== id));
-    if (selectedHand?.id === id) setSelectedHand(null);
-  };
+    const updateHand = useCallback((id: string, updates: Partial<HandHistory>) => {
+        updateHandService(id, updates);
+        setHands(prev => prev.map(h => h.id === id ? { ...h, ...updates } : h));
+        if (selectedHand?.id === id) {
+            setSelectedHand(prev => prev ? { ...prev, ...updates } : null);
+        }
+    }, [selectedHand]);
 
-  const launchAnalysis = (url: string) => {
-    setActiveVideoUrl(url);
-    setViewMode('analyze');
-  };
-  
-  const analyzeSpot = (context: string) => {
-     // Dispatch custom event for StrategyCoach to pick up
-     const event = new CustomEvent('analyze-spot', { detail: context });
-     window.dispatchEvent(event);
-  };
+    const deleteHand = useCallback((id: string) => {
+        deleteHandService(id);
+        setHands(prev => prev.filter(h => h.id !== id));
+        if (selectedHand?.id === id) setSelectedHand(null);
+        addToast({ title: 'Hand Deleted', type: 'info' });
+    }, [selectedHand, addToast]);
 
-  const addToQueue = (video: ChannelVideo) => {
-     const newItem: QueueItem = {
-         id: video.id,
-         videoUrl: video.url,
-         title: video.title,
-         thumbnail: video.thumbnail,
-         status: 'pending',
-         addedAt: Date.now()
-     };
-     setQueue(prev => [...prev, newItem]);
-     addToast({ title: "Added to Queue", description: video.title, type: 'info' });
-     
-     // Simulate processing
-     setTimeout(() => {
-         setQueue(q => q.map(i => i.id === video.id ? { ...i, status: 'processing' } : i));
-         setIsQueueProcessing(true);
-         
-         setTimeout(() => {
-             setQueue(q => q.map(i => i.id === video.id ? { ...i, status: 'completed' } : i));
-             setIsQueueProcessing(false);
-             addToast({ title: "Processing Complete", description: video.title, type: 'success' });
-         }, 3000);
-     }, 1000);
-  };
-  
-  const removeFromQueue = (id: string) => {
-      setQueue(prev => prev.filter(i => i.id !== id));
-  };
+    const clearAllData = useCallback(() => {
+        clearDatabase();
+        setHands([]);
+        setSelectedHand(null);
+        addToast({ title: 'Database Cleared', type: 'success' });
+    }, [addToast]);
 
-  const addToast = (toast: Omit<Toast, 'id'>) => {
-      const id = crypto.randomUUID();
-      setToasts(prev => [...prev, { ...toast, id }]);
-  };
+    const launchAnalysis = useCallback((url: string) => {
+        setActiveVideoUrl(url);
+        setViewMode('analyze');
+    }, []);
 
-  const removeToast = (id: string) => {
-      setToasts(prev => prev.filter(t => t.id !== id));
-  };
+    const analyzeSpot = useCallback((context: string) => {
+        // Dispatch event for StrategyCoach to pick up
+        const event = new CustomEvent('analyze-spot', { detail: context });
+        window.dispatchEvent(event);
+    }, []);
 
-  const clearAllDataHandler = () => {
-      clearDatabase();
-      setHands([]);
-      setSelectedHand(null);
-      addToast({ title: "Database Cleared", type: 'info' });
-  };
+    // Queue Logic (Simplified)
+    const addToQueue = useCallback((video: ChannelVideo) => {
+        const newItem: QueueItem = {
+            id: video.id,
+            videoUrl: video.url,
+            title: video.title,
+            thumbnail: video.thumbnail,
+            status: 'pending',
+            addedAt: Date.now()
+        };
+        setQueue(prev => [...prev, newItem]);
+        addToast({ title: 'Added to Queue', description: video.title, type: 'success' });
+        
+        // Simulate processing start if not active
+        if (!isQueueProcessing) {
+            processQueue();
+        }
+    }, [isQueueProcessing, addToast]);
 
-  const contextValue: PokerContextType = {
-    user,
-    setUser,
-    hands,
-    loadHands,
-    addHand,
-    updateHand,
-    deleteHand,
-    selectedHand,
-    setSelectedHand,
-    viewMode,
-    setViewMode,
-    activeVideoUrl,
-    launchAnalysis,
-    analyzeSpot,
-    queue,
-    addToQueue,
-    removeFromQueue,
-    isQueueProcessing,
-    addToast,
-    clearAllData: clearAllDataHandler,
-    labContext,
-    setLabContext
-  };
+    const removeFromQueue = useCallback((id: string) => {
+        setQueue(prev => prev.filter(i => i.id !== id));
+    }, []);
 
-  return (
-    <PokerContext.Provider value={contextValue}>
-      <AppContent />
-      <ToastContainer toasts={toasts} removeToast={removeToast} />
-    </PokerContext.Provider>
-  );
+    const processQueue = async () => {
+        setIsQueueProcessing(true);
+        // This is a simulation since we can't process background in this demo easily without backend
+        // In a real app, this would trigger a worker
+        setTimeout(() => setIsQueueProcessing(false), 5000); 
+    };
+
+    const contextValue: PokerContextType = {
+        user, setUser,
+        hands, loadHands, addHand, updateHand, deleteHand,
+        selectedHand, setSelectedHand,
+        viewMode, setViewMode,
+        activeVideoUrl, launchAnalysis, analyzeSpot,
+        queue, addToQueue, removeFromQueue, isQueueProcessing,
+        addToast, clearAllData,
+        labContext, setLabContext
+    };
+
+    return (
+        <ErrorBoundary>
+            <PokerContext.Provider value={contextValue}>
+                <AppContent />
+                <ToastContainer toasts={toasts} removeToast={removeToast} />
+            </PokerContext.Provider>
+        </ErrorBoundary>
+    );
 };
 
 export default App;

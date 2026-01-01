@@ -1,7 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 import { usePoker } from '../App';
-import { User as UserIcon, CreditCard, Clock, Settings, LogOut, CheckCircle, Trash2, Database, Sliders, DollarSign, Layout, Monitor, Save, Upload, Cloud, Server, Key, Bot } from 'lucide-react';
+import { User as UserIcon, CreditCard, Clock, Settings, LogOut, CheckCircle, Trash2, Database, Sliders, DollarSign, Layout, Monitor, Save, Upload, Cloud, Server, Key, Bot, Youtube } from 'lucide-react';
 import { importDatabase } from '../services/storage';
 
 export const Profile: React.FC = () => {
@@ -27,6 +27,9 @@ export const Profile: React.FC = () => {
   const [openRouterKey, setOpenRouterKey] = useState(user?.settings?.ai?.openRouterApiKey || '');
   const [selectedModel, setSelectedModel] = useState(user?.settings?.ai?.model || 'gemini-2.0-flash-exp');
 
+  // YouTube API Key
+  const [youtubeKey, setYoutubeKey] = useState(user?.settings?.youtubeApiKey || '');
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!user) return null;
@@ -43,6 +46,7 @@ export const Profile: React.FC = () => {
                   uiDensity: density,
                   hudOpacity: hudOpacity,
                   currencyRates: parsedCurrencies,
+                  youtubeApiKey: youtubeKey,
                   gcp: {
                       projectId: gcpProject,
                       bucketName: gcpBucket,
@@ -125,18 +129,24 @@ export const Profile: React.FC = () => {
             </button>
         </div>
 
-        {/* AI Configuration */}
+        {/* API Configuration */}
         <div className="bg-zinc-900/30 border border-border rounded-2xl p-6 space-y-6">
             <div className="flex items-center gap-3 mb-2 border-b border-zinc-800 pb-4">
                 <div className="p-2 bg-purple-500/10 text-purple-400 rounded-lg">
-                    <Bot className="w-5 h-5" />
+                    <Key className="w-5 h-5" />
                 </div>
-                <h3 className="font-bold text-white">AI Engine Configuration</h3>
+                <h3 className="font-bold text-white">External API Keys</h3>
             </div>
 
             <div className="space-y-6">
-                <div>
-                    <label className="block text-xs font-bold text-zinc-500 uppercase mb-2">Provider</label>
+                
+                {/* AI Settings */}
+                <div className="space-y-4 border-b border-zinc-800/50 pb-6">
+                    <div className="flex items-center gap-2 mb-2">
+                        <Bot className="w-4 h-4 text-zinc-400" />
+                        <span className="text-sm font-bold text-zinc-300">AI Intelligence Provider</span>
+                    </div>
+                    
                     <div className="flex gap-4">
                         <button 
                             onClick={() => { setAiProvider('google'); setSelectedModel('gemini-2.0-flash-exp'); }}
@@ -159,48 +169,62 @@ export const Profile: React.FC = () => {
                             OpenRouter
                         </button>
                     </div>
-                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-2">
-                            {aiProvider === 'google' ? 'Google API Key' : 'OpenRouter API Key'}
-                        </label>
-                        <div className="relative">
-                            <Key className="absolute left-3 top-2.5 w-4 h-4 text-zinc-600" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label className="block text-xs font-bold text-zinc-500 uppercase mb-2">
+                                {aiProvider === 'google' ? 'Google API Key' : 'OpenRouter API Key'}
+                            </label>
                             <input 
                                 type="password" 
                                 value={aiProvider === 'google' ? googleKey : openRouterKey} 
                                 onChange={(e) => aiProvider === 'google' ? setGoogleKey(e.target.value) : setOpenRouterKey(e.target.value)}
-                                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg py-2 pl-10 pr-3 text-sm text-white focus:outline-none focus:border-poker-gold"
+                                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:border-poker-gold"
                                 placeholder={aiProvider === 'google' ? "AIzaSy..." : "sk-or-..."}
                             />
                         </div>
+                        <div>
+                            <label className="block text-xs font-bold text-zinc-500 uppercase mb-2">Selected Model</label>
+                            <select 
+                                value={selectedModel}
+                                onChange={(e) => setSelectedModel(e.target.value)}
+                                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:border-poker-gold"
+                            >
+                                {aiProvider === 'google' ? (
+                                    <>
+                                        <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash (Preview)</option>
+                                        <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                                        <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                                    </>
+                                ) : (
+                                    <>
+                                        <option value="google/gemini-3-flash-preview">Google Gemini 3 Flash Preview</option>
+                                        <option value="google/gemini-2.0-flash-001">Google Gemini 2.0 Flash</option>
+                                        <option value="google/gemini-2.0-pro-exp-02-05:free">Google Gemini 2.0 Pro Exp (Free)</option>
+                                        <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
+                                        <option value="openai/gpt-4o">GPT-4o</option>
+                                    </>
+                                )}
+                            </select>
+                        </div>
                     </div>
-                    <div>
-                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-2">Selected Model</label>
-                        <select 
-                            value={selectedModel}
-                            onChange={(e) => setSelectedModel(e.target.value)}
-                            className="w-full bg-zinc-950 border border-zinc-800 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:border-poker-gold"
-                        >
-                            {aiProvider === 'google' ? (
-                                <>
-                                    <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash (Preview)</option>
-                                    <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
-                                    <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
-                                </>
-                            ) : (
-                                <>
-                                    <option value="google/gemini-3-flash-preview">Google Gemini 3 Flash Preview</option>
-                                    <option value="google/gemini-2.0-flash-001">Google Gemini 2.0 Flash</option>
-                                    <option value="google/gemini-2.0-pro-exp-02-05:free">Google Gemini 2.0 Pro Exp (Free)</option>
-                                    <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
-                                    <option value="openai/gpt-4o">GPT-4o</option>
-                                </>
-                            )}
-                        </select>
+                </div>
+
+                {/* YouTube Settings */}
+                <div>
+                    <div className="flex items-center gap-2 mb-2">
+                        <Youtube className="w-4 h-4 text-red-500" />
+                        <span className="text-sm font-bold text-zinc-300">YouTube Data API</span>
                     </div>
+                    <label className="block text-xs font-bold text-zinc-500 uppercase mb-2">API Key (v3)</label>
+                    <input 
+                        type="password" 
+                        value={youtubeKey} 
+                        onChange={(e) => setYoutubeKey(e.target.value)}
+                        className="w-full bg-zinc-950 border border-zinc-800 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:border-red-500"
+                        placeholder="AIzaSy..."
+                    />
+                    <p className="text-[10px] text-zinc-500 mt-1">Required for Channels view. Leave empty to use default (may be rate limited).</p>
                 </div>
             </div>
         </div>

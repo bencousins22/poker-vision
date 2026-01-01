@@ -158,6 +158,8 @@ export const HistorySidebar: React.FC = () => {
             <div className="relative group flex-1">
                 <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-zinc-600 group-focus-within:text-zinc-300 transition-colors" />
                 <input 
+                    id="hand-search"
+                    name="search"
                     type="text" 
                     placeholder="Search hands..." 
                     className="w-full bg-zinc-900 border border-zinc-800 rounded-xl py-2 pl-9 pr-8 text-xs text-white focus:outline-none focus:border-zinc-700 transition-colors placeholder-zinc-700"
@@ -191,12 +193,16 @@ export const HistorySidebar: React.FC = () => {
             <div className="mt-3 pt-3 border-t border-zinc-900 animate-slide-up">
                 <div className="grid grid-cols-2 gap-2">
                     <input 
+                        id="date-start"
+                        name="startDate"
                         type="date" 
                         className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-[10px] text-zinc-400 focus:outline-none focus:border-zinc-700 [color-scheme:dark]"
                         value={startDate}
                         onChange={(e) => setStartDate(e.target.value)}
                     />
                     <input 
+                        id="date-end"
+                        name="endDate"
                         type="date" 
                         className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-[10px] text-zinc-400 focus:outline-none focus:border-zinc-700 [color-scheme:dark]"
                         value={endDate}
@@ -365,6 +371,8 @@ export const HistorySidebar: React.FC = () => {
             <div className="relative">
                 <textarea 
                     ref={textareaRef}
+                    id="note-textarea"
+                    name="note"
                     className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg p-3 text-xs text-zinc-300 focus:border-zinc-700 focus:ring-1 focus:ring-zinc-700 transition-all resize-none h-20 placeholder-zinc-700 font-mono leading-relaxed"
                     placeholder="Reads on player..."
                     value={noteText}

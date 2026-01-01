@@ -179,7 +179,7 @@ const OverviewTab = ({ hands, stats, timeFilter, setTimeFilter }: any) => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 
                 {/* Main Graph */}
-                <div className="lg:col-span-2 bg-[#121214] border border-zinc-800 rounded-xl p-6 shadow-sm min-h-[400px] flex flex-col">
+                <div className="lg:col-span-2 bg-[#121214] border border-zinc-800 rounded-xl p-6 shadow-sm h-[400px] flex flex-col">
                     <div className="flex justify-between items-center mb-6">
                         <h3 className="font-bold text-white flex items-center gap-2 text-sm">
                             <TrendingUp className="w-4 h-4 text-poker-gold" /> Profit Timeline
@@ -191,7 +191,7 @@ const OverviewTab = ({ hands, stats, timeFilter, setTimeFilter }: any) => {
                         </div>
                     </div>
                     
-                    <div className="flex-1 w-full relative">
+                    <div className="flex-1 w-full relative min-h-0 min-w-0">
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={chartData}>
                                 <defs>
@@ -260,13 +260,13 @@ const OverviewTab = ({ hands, stats, timeFilter, setTimeFilter }: any) => {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Position Chart */}
-                <div className="bg-[#121214] border border-zinc-800 rounded-xl p-5 shadow-sm min-h-[300px] flex flex-col">
+                <div className="bg-[#121214] border border-zinc-800 rounded-xl p-5 shadow-sm h-[300px] flex flex-col">
                     <div className="flex justify-between items-center mb-4">
                         <h3 className="font-bold text-white flex items-center gap-2 text-sm">
                             <Crosshair className="w-4 h-4 text-poker-gold" /> Winrate by Position
                         </h3>
                     </div>
-                    <div className="flex-1 w-full">
+                    <div className="flex-1 w-full min-h-0 min-w-0">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={positionData}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
