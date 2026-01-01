@@ -33,7 +33,7 @@ export const AnalysisView: React.FC = () => {
 
   useEffect(() => {
     if (activeVideoUrl) {
-        setUrl(activeVideoUrl);
+        setUrl(activeVideoUrl || '');
         setFile(null);
         setStatus(AnalysisStatus.IDLE);
         setResult(null);
