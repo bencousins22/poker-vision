@@ -7,7 +7,6 @@ export const fileToGenerativePart = async (file: File): Promise<string> => {
     const reader = new FileReader();
     reader.onloadend = () => {
       const base64String = reader.result as string;
-      // Remove data url prefix (e.g. "data:video/mp4;base64,")
       const base64 = base64String.split(',')[1];
       resolve(base64);
     };
@@ -16,7 +15,7 @@ export const fileToGenerativePart = async (file: File): Promise<string> => {
   });
 };
 
-const HAND_PARSER_INSTRUCTION = "You are an expert Poker Hand History Transcriber specializing in Hustler Casino Live (HCL). Watch the video and convert the action into a PokerStars Hand History text block. Visual IDs: Stacks are at nameplates, dealer has a white 'D' disc, the active player has a gold glowing border. Extract player names, stacks, hole cards from RFID graphics, and community cards. FORMAT: Return ONLY the raw text block, no markdown or comments.";
+const HAND_PARSER_INSTRUCTION = "You are an expert Poker Hand History Transcriber for 'Hustler Casino Live' (HCL). Convert the video action into a standard PokerStars Hand History text block. Visual cues: Dealer has white 'D' disc. Active player has gold border. Cards are RFID graphics. Extract: Player names, stacks, bets, and cards. FORMAT: Return raw text only, no markdown.";
 
 const COACH_TOOLS: Tool[] = [{
     functionDeclarations: [
@@ -34,37 +33,11 @@ const COACH_TOOLS: Tool[] = [{
                 },
                 required: ["view"]
             }
-        },
-        {
-            name: "analyze_video_url",
-            description: "Start analyzing a video from a given URL.",
-            parameters: {
-                type: Type.OBJECT,
-                properties: {
-                    url: { type: Type.STRING, description: "The valid YouTube URL." }
-                },
-                required: ["url"]
-            }
         }
     ]
 }];
 
 const MODEL_NAME = "gemini-3-pro-preview";
-
-async function retryOperation<T>(operation: () => Promise<T>, retries = 3, delay = 1000): Promise<T> {
-  let lastError;
-  for (let i = 0; i < retries; i++) {
-    try {
-      return await operation();
-    } catch (error: any) {
-      lastError = error;
-      if (i < retries - 1) {
-          await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, i)));
-      }
-    }
-  }
-  throw lastError;
-}
 
 export const analyzePokerVideo = async (
   videoFile: File | null, 
@@ -72,34 +45,26 @@ export const analyzePokerVideo = async (
   progressCallback: (msg: string) => void,
   streamCallback?: (text: string) => void
 ): Promise<AnalysisResult> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  let contents: any;
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
   
+  let parts: Part[] = [];
   if (videoFile) {
-    progressCallback("Uploading video data to Gemini...");
+    progressCallback("Extracting visual data...");
     const base64Data = await fileToGenerativePart(videoFile);
-    contents = {
-        parts: [
-            { text: `Analyze the poker hand in this HCL footage. Source: ${youtubeUrl || 'Uploaded File'}` },
-            { inlineData: { mimeType: videoFile.type, data: base64Data } }
-        ]
-    };
+    parts = [
+        { text: "Analyze this HCL poker hand." },
+        { inlineData: { mimeType: videoFile.type, data: base64Data } }
+    ];
   } else {
-    progressCallback("Searching video metadata...");
-    contents = {
-        parts: [{ text: `Examine the poker action at this YouTube URL: ${youtubeUrl}. Provide a full PokerStars Hand History block.` }]
-    };
+    progressCallback("Parsing video URL...");
+    parts = [{ text: `Analyze the HCL poker hand at: ${youtubeUrl}. Output PokerStars Hand History.` }];
   }
 
   try {
-    const responseStream = await retryOperation(async () => {
-        return await ai.models.generateContentStream({
-            model: MODEL_NAME,
-            contents,
-            config: {
-                systemInstruction: HAND_PARSER_INSTRUCTION,
-            }
-        });
+    const responseStream = await ai.models.generateContentStream({
+        model: MODEL_NAME,
+        contents: [{ parts }],
+        config: { systemInstruction: HAND_PARSER_INSTRUCTION }
     });
 
     let fullText = '';
@@ -110,33 +75,30 @@ export const analyzePokerVideo = async (
         }
     }
 
-    if (!fullText) throw new Error("No text generated from analysis.");
-    
-    return { handHistory: fullText, summary: "HCL Analysis Complete" };
-
+    return { handHistory: fullText, summary: "HCL Hand Transcribed" };
   } catch (error: any) {
     console.error("Gemini Error:", error);
-    throw new Error(error.message || "Poker Analysis Pipeline Failed.");
+    throw new Error(error.message || "Failed to analyze video.");
   }
 };
 
 export const getCoachChat = (systemContext: string) => {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
     return ai.chats.create({
         model: MODEL_NAME,
         config: {
-            systemInstruction: `You are 'PokerVision Pro', an elite poker coach. Use the provided context to offer strategic advice. Context: ${systemContext}`,
+            systemInstruction: `You are 'PokerVision Pro', an AI coach. Context: ${systemContext}`,
             tools: COACH_TOOLS
         }
     });
 };
 
 export const generateQueryFromNaturalLanguage = async (nlQuery: string): Promise<string> => {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
     try {
         const response = await ai.models.generateContent({
             model: "gemini-3-flash-preview",
-            contents: { parts: [{ text: `Convert to PokerQL: "${nlQuery}". Fields: win, loss, pot, hand, range, pos, action, tag. Output raw query string only.` }] }
+            contents: { parts: [{ text: `Convert to PokerQL: "${nlQuery}". Output raw string.` }] }
         });
         return response.text?.trim() || "";
     } catch (e) {
