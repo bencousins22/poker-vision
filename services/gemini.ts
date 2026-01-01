@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Tool, Type, Part } from "@google/genai";
-import { AnalysisResult } from "../types";
+import { AnalysisResult, AISettings, ChatMessage } from "../types";
 
 // Helper to convert file to base64
 export const fileToGenerativePart = async (file: File): Promise<string> => {
@@ -72,110 +72,224 @@ const COACH_TOOLS: Tool[] = [{
     ]
 }];
 
-// Models - Updated to Gemini 3 Flash Preview per request
-const VIDEO_MODEL = "gemini-3-flash-preview"; 
-const REASONING_MODEL = "gemini-3-flash-preview";
+// --- AI SERVICE ABSTRACTION ---
+
+const DEFAULT_MODEL = "gemini-2.0-flash-exp"; 
+
+export interface ChatSession {
+    sendMessage: (payload: { message: string, history?: ChatMessage[] }) => Promise<{ text: string, functionCalls?: any[] }>;
+}
+
+const getActiveSettings = (settings?: AISettings) => {
+    const provider = settings?.provider || 'google';
+    const apiKey = provider === 'openrouter' 
+        ? settings?.openRouterApiKey || ''
+        : settings?.googleApiKey || process.env.API_KEY || '';
+    const model = settings?.model || DEFAULT_MODEL;
+    return { provider, apiKey, model };
+};
+
+// --- OpenRouter Implementation ---
+
+const callOpenRouter = async (
+    apiKey: string, 
+    model: string, 
+    messages: any[], 
+    streamCallback?: (text: string) => void
+): Promise<string> => {
+    try {
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${apiKey}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                model: model,
+                messages: messages,
+                stream: false // Streaming disabled for simple implementation unless callback provided
+            })
+        });
+
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.error?.message || "OpenRouter API Error");
+        }
+
+        const data = await response.json();
+        return data.choices?.[0]?.message?.content || "";
+    } catch (e: any) {
+        console.error("OpenRouter Call Failed:", e);
+        throw e;
+    }
+};
 
 export const analyzePokerVideo = async (
   videoFile: File | null, 
   youtubeUrl: string,
   siteFormat: string,
   progressCallback: (msg: string) => void,
-  streamCallback?: (text: string) => void
+  streamCallback?: (text: string) => void,
+  settings?: AISettings
 ): Promise<AnalysisResult> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  
-  let model = VIDEO_MODEL;
-  let parts: Part[] = [];
+  const { provider, apiKey, model } = getActiveSettings(settings);
   
   // Select specialized instruction based on format
   const isHCL = siteFormat.includes("Hustler");
   const systemInstruction = isHCL ? HCL_INSTRUCTION : GENERIC_INSTRUCTION;
-  
-  let config: any = { systemInstruction };
 
-  if (videoFile) {
-    // --- REAL VIDEO ANALYSIS (MULTIMODAL) ---
-    progressCallback(`Encoding video (${(videoFile.size / 1024 / 1024).toFixed(1)}MB) for Vision API...`);
-    const base64Data = await fileToGenerativePart(videoFile);
-    
-    parts = [
-        { text: isHCL 
-            ? "Analyze this HCL video clip. Extract the hand history strictly following PokerStars format. Pay attention to the HCL overlays for stack sizes and actions." 
-            : "Analyze this poker video clip. Extract the hand history exactly as it happened." 
-        },
-        { inlineData: { mimeType: videoFile.type, data: base64Data } }
-    ];
-    model = VIDEO_MODEL; 
-  } else if (youtubeUrl) {
-    // --- URL TEXT/SEARCH ANALYSIS ---
-    progressCallback(`Analyzing URL (${siteFormat} Protocol)...`);
-    
-    const prompt = isHCL 
-        ? `Find the poker hand history for this Hustler Casino Live video URL: ${youtubeUrl}. search for the hand details (players, stacks, cards, action) and reconstruct a PokerStars Hand History format text block. The video is likely a famous HCL hand.`
-        : `Find the poker hand history for this video URL: ${youtubeUrl}. If you can't watch it directly, search for the hand details based on the video ID or title and reconstruct the hand history.`;
+  // --- GOOGLE NATIVE IMPLEMENTATION ---
+  if (provider === 'google') {
+      const ai = new GoogleGenAI({ apiKey });
+      let parts: Part[] = [];
+      let config: any = { systemInstruction };
 
-    parts = [{ text: prompt }];
-    model = REASONING_MODEL;
-    
-    // Enable Search Grounding for URL analysis
-    config.tools = [{ googleSearch: {} }];
-  } else {
-      throw new Error("No video source provided.");
+      if (videoFile) {
+        progressCallback(`Encoding video (${(videoFile.size / 1024 / 1024).toFixed(1)}MB) for Gemini Native...`);
+        const base64Data = await fileToGenerativePart(videoFile);
+        parts = [
+            { text: "Analyze this video clip. Extract the hand history strictly following PokerStars format." },
+            { inlineData: { mimeType: videoFile.type, data: base64Data } }
+        ];
+      } else if (youtubeUrl) {
+        progressCallback(`Analyzing URL via Search Grounding...`);
+        const prompt = isHCL 
+            ? `Find the poker hand history for this Hustler Casino Live video URL: ${youtubeUrl}. Reconstruct a PokerStars Hand History format.`
+            : `Find the poker hand history for this video URL: ${youtubeUrl}. Reconstruct the hand history.`;
+        parts = [{ text: prompt }];
+        config.tools = [{ googleSearch: {} }];
+      } else {
+          throw new Error("No source provided.");
+      }
+
+      try {
+        progressCallback(`Connecting to ${model}...`);
+        const responseStream = await ai.models.generateContentStream({
+            model: model,
+            contents: [{ parts }],
+            config: config
+        });
+
+        let fullText = '';
+        for await (const chunk of responseStream) {
+            if (chunk.text) {
+                fullText += chunk.text;
+                if (streamCallback) streamCallback(fullText);
+            }
+        }
+        return { handHistory: fullText, summary: "Analysis Complete" };
+      } catch (error: any) {
+        throw new Error(error.message || "Google AI Error");
+      }
   }
 
-  try {
-    progressCallback(`Connecting to ${model}...`);
-    
-    const responseStream = await ai.models.generateContentStream({
-        model: model,
-        contents: [{ parts }],
-        config: config
-    });
+  // --- OPENROUTER IMPLEMENTATION ---
+  if (provider === 'openrouter') {
+      if (!apiKey) throw new Error("OpenRouter API Key missing in settings.");
+      
+      const messages: any[] = [
+          { role: "system", content: systemInstruction }
+      ];
 
-    let fullText = '';
-    for await (const chunk of responseStream) {
-        if (chunk.text) {
-            fullText += chunk.text;
-            if (streamCallback) streamCallback(fullText);
-        }
-    }
+      if (videoFile) {
+          progressCallback(`Encoding video for OpenRouter (Base64)...`);
+          const base64Data = await fileToGenerativePart(videoFile);
+          
+          // OpenRouter/OpenAI Compatible Multimodal Payload
+          // Note: Sending raw video as image_url data URI is the standard workaround for some proxies, 
+          // or sending as text content if the model supports it natively. 
+          // We will attempt the standard image_url format with the video mime type.
+          messages.push({
+              role: "user",
+              content: [
+                  { type: "text", text: "Analyze this video file. Extract the hand history." },
+                  { 
+                      type: "image_url", 
+                      image_url: { 
+                          url: `data:${videoFile.type};base64,${base64Data}` 
+                      } 
+                  }
+              ]
+          });
+      } else if (youtubeUrl) {
+          messages.push({
+              role: "user",
+              content: `Analyze this YouTube URL: ${youtubeUrl}. Extract hand history.`
+          });
+      }
 
-    if (!fullText) {
-        throw new Error("AI returned empty response. Try uploading the video file directly.");
-    }
-
-    return { handHistory: fullText, summary: "Analysis Complete" };
-  } catch (error: any) {
-    console.error("Gemini API Error:", error);
-    let errorMsg = error.message || "Failed to analyze video.";
-    if (errorMsg.includes("400")) errorMsg += " (Check API Key or File Size/Format)";
-    throw new Error(errorMsg);
+      progressCallback(`Sending to OpenRouter (${model})...`);
+      const text = await callOpenRouter(apiKey, model, messages);
+      if (streamCallback) streamCallback(text);
+      
+      return { handHistory: text, summary: "Analysis Complete" };
   }
+
+  throw new Error("Invalid AI Provider");
 };
 
-export const getCoachChat = (systemContext: string) => {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    return ai.chats.create({
-        model: REASONING_MODEL,
-        config: {
-            systemInstruction: `You are 'PokerVision Pro', an AI coach. Context: ${systemContext}`,
-            tools: COACH_TOOLS,
-            // Added thinking budget to enable Gemini 3 reasoning capabilities
-            thinkingConfig: { thinkingBudget: 2048 } 
-        }
-    });
+export const getCoachChat = (systemContext: string, settings?: AISettings): ChatSession => {
+    const { provider, apiKey, model } = getActiveSettings(settings);
+
+    // --- GOOGLE NATIVE CHAT ---
+    if (provider === 'google') {
+        const ai = new GoogleGenAI({ apiKey });
+        const chat = ai.chats.create({
+            model: model,
+            config: {
+                systemInstruction: `You are 'PokerVision Pro', an AI coach. Context: ${systemContext}`,
+                tools: COACH_TOOLS,
+                thinkingConfig: { thinkingBudget: 1024 } // Enabled for thinking models
+            }
+        });
+
+        return {
+            sendMessage: async ({ message }) => {
+                const result = await chat.sendMessage({ message });
+                return { 
+                    text: result.text || "", 
+                    functionCalls: result.functionCalls 
+                };
+            }
+        };
+    }
+
+    // --- OPENROUTER STATELESS CHAT ---
+    if (provider === 'openrouter') {
+        return {
+            sendMessage: async ({ message, history }) => {
+                // Convert ChatMessage[] history to OpenRouter format
+                const apiMessages = [
+                    { role: "system", content: `You are 'PokerVision Pro'. Context: ${systemContext}` },
+                    ...(history || []).filter(m => m.role !== 'system').map(m => ({
+                        role: m.role === 'model' ? 'assistant' : m.role,
+                        content: m.text || ""
+                    })),
+                    { role: "user", content: message }
+                ];
+
+                const text = await callOpenRouter(apiKey, model, apiMessages);
+                return { text, functionCalls: [] }; // Function calling not implemented for OR in this demo
+            }
+        };
+    }
+
+    throw new Error("Invalid AI Configuration");
 };
 
-export const generateQueryFromNaturalLanguage = async (nlQuery: string): Promise<string> => {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    try {
+export const generateQueryFromNaturalLanguage = async (nlQuery: string, settings?: AISettings): Promise<string> => {
+    const { provider, apiKey, model } = getActiveSettings(settings);
+    const prompt = `Convert this natural language request into a specific SQL-like WHERE clause for poker hand filtering. Fields: win (number), hand (e.g. "AKs"), pos (string), pot (number), action (string). Input: "${nlQuery}". Output ONLY the raw string.`;
+
+    if (provider === 'google') {
+        const ai = new GoogleGenAI({ apiKey });
         const response = await ai.models.generateContent({
-            model: REASONING_MODEL, 
-            contents: [{ parts: [{ text: `Convert this natural language request into a specific SQL-like WHERE clause for poker hand filtering. Fields: win (number), hand (e.g. "AKs"), pos (string), pot (number), action (string). Input: "${nlQuery}". Output ONLY the raw string, e.g. "win > 100 AND hand = 'AA'".` }] }]
+            model,
+            contents: [{ parts: [{ text: prompt }] }]
         });
         return response.text?.trim() || "";
-    } catch (e) {
-        return "";
+    } else {
+        const response = await callOpenRouter(apiKey, model, [{ role: "user", content: prompt }]);
+        return response.trim();
     }
 };

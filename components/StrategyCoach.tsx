@@ -12,7 +12,7 @@ interface ToolCallData {
 }
 
 export const StrategyCoach: React.FC = () => {
-  const { selectedHand, hands, viewMode, setViewMode, activeVideoUrl, launchAnalysis } = usePoker();
+  const { selectedHand, hands, viewMode, setViewMode, activeVideoUrl, launchAnalysis, user } = usePoker();
   
   // Chat State
   const [messages, setMessages] = useState<ChatMessage[]>([{
@@ -25,12 +25,12 @@ export const StrategyCoach: React.FC = () => {
   const [isThinking, setIsThinking] = useState(false);
   const [ragStatus, setRagStatus] = useState<'idle' | 'searching' | 'found' | 'none'>('idle');
   
-  // Ref to the Gemini Chat Session
-  const chatSessionRef = useRef<any>(null);
+  // Ref to the Chat Service Interface
+  const chatServiceRef = useRef<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Initialize Chat Session with Current Context
+  // Initialize Chat Service with Current Context
   useEffect(() => {
     const contextString = `
       User is currently on view: ${viewMode}.
@@ -39,11 +39,12 @@ export const StrategyCoach: React.FC = () => {
     `;
     
     try {
-        chatSessionRef.current = getCoachChat(contextString);
+        // We pass user.settings.ai to configure the provider
+        chatServiceRef.current = getCoachChat(contextString, user?.settings?.ai);
     } catch (e) {
         console.error("Failed to initialize chat session", e);
     }
-  }, [viewMode, selectedHand, activeVideoUrl]);
+  }, [viewMode, selectedHand, activeVideoUrl, user?.settings?.ai]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -53,7 +54,7 @@ export const StrategyCoach: React.FC = () => {
   const handleSend = useCallback(async (textOverride?: string) => {
       const text = (textOverride || input).trim();
       
-      if (!text || isThinking || !chatSessionRef.current) return;
+      if (!text || isThinking || !chatServiceRef.current) return;
 
       // Add User Message
       const userMsg: ChatMessage = {
@@ -62,7 +63,9 @@ export const StrategyCoach: React.FC = () => {
           text: text,
           timestamp: Date.now()
       };
-      setMessages(prev => [...prev, userMsg]);
+      const updatedMessages = [...messages, userMsg];
+      setMessages(updatedMessages);
+      
       setInput('');
       if (textareaRef.current) textareaRef.current.style.height = 'auto'; // Reset height
       setIsThinking(true);
@@ -81,12 +84,14 @@ export const StrategyCoach: React.FC = () => {
 
           const enhancedPrompt = `${text}\n${ragResult.systemMessage}`;
 
-          // 2. Send to Gemini
-          const response = await chatSessionRef.current.sendMessage({
-              message: enhancedPrompt
+          // 2. Send to AI Service
+          // Important: Pass history for stateless providers (OpenRouter)
+          const response = await chatServiceRef.current.sendMessage({
+              message: enhancedPrompt,
+              history: updatedMessages 
           });
           
-          // Check for Function Calls
+          // Check for Function Calls (Only supported natively by Google currently, OpenRouter support varies)
           const functionCalls = response.functionCalls || [];
           
           if (functionCalls && functionCalls.length > 0) {
@@ -147,7 +152,7 @@ export const StrategyCoach: React.FC = () => {
           setIsThinking(false);
           setTimeout(() => setRagStatus('idle'), 4000);
       }
-  }, [input, isThinking, setViewMode, launchAnalysis, hands]);
+  }, [input, isThinking, setViewMode, launchAnalysis, hands, messages]);
 
   // Listener for events from other components
   useEffect(() => {
@@ -331,7 +336,7 @@ export const StrategyCoach: React.FC = () => {
                 </div>
             </div>
             <div className="text-[9px] text-zinc-600 mt-2 text-center font-medium opacity-50">
-                AI Agent active.
+                AI Agent active ({user?.settings?.ai?.provider || 'Google'}).
             </div>
         </div>
     </div>

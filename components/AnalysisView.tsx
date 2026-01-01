@@ -46,7 +46,7 @@ const AnalysisPipeline: React.FC<{ step: number }> = ({ step }) => {
 };
 
 export const AnalysisView: React.FC = () => {
-  const { addHand, activeVideoUrl, setSelectedHand, setViewMode } = usePoker();
+  const { addHand, activeVideoUrl, setSelectedHand, setViewMode, user } = usePoker();
   const [url, setUrl] = useState('');
   const [file, setFile] = useState<File | null>(null);
   
@@ -155,6 +155,7 @@ export const AnalysisView: React.FC = () => {
     const sourceMsg = file ? `Video File (${file.name})` : 'YouTube URL';
     addLog(`Initializing Analysis for ${sourceMsg}...`, 'system');
     addLog(`Protocol: ${siteFormat}`, 'system');
+    addLog(`AI Provider: ${user?.settings?.ai?.provider || 'Default'}`, 'system');
 
     try {
         setTimeout(() => setProgressStep(2), 1500);
@@ -170,7 +171,8 @@ export const AnalysisView: React.FC = () => {
             (streamText) => {
                 setStreamingContent(streamText);
                 if (streamText.length > 50 && progressStep < 4) setProgressStep(4);
-            }
+            },
+            user?.settings?.ai // Pass AI settings
         );
         
         setResult(res);

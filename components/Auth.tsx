@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { User } from '../types';
 import { Mail, Lock, Loader2, ArrowRight } from 'lucide-react';
@@ -35,7 +36,13 @@ export const Auth: React.FC<Props> = ({ onSuccess, onCancel }) => {
           uiDensity: 'normal',
           hudOpacity: 1,
           tagTemplates: ['Bad Beat', 'Bluff Catch', 'Misclick', 'Cooler', 'GTO'],
-          savedRanges: DEFAULT_RANGES
+          savedRanges: DEFAULT_RANGES,
+          ai: {
+              provider: 'google',
+              model: 'gemini-2.0-flash-exp', // Default Google model
+              googleApiKey: '',
+              openRouterApiKey: ''
+          }
       }
     };
 

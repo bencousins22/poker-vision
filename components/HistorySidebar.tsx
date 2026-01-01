@@ -1,16 +1,18 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { usePoker } from '../App';
-import { Trash2, Database, Search, Pen, Save, Filter, Calendar, X, StickyNote, Download, ArrowUpRight, DollarSign, Tag, Plus, Trophy, CheckCircle2, Circle, Play, TrendingUp } from 'lucide-react';
+import { Trash2, Database, Search, Pen, Save, Filter, Calendar, X, StickyNote, Download, ArrowUpRight, DollarSign, Tag, Plus, Trophy, CheckCircle2, Circle, Play, TrendingUp, CloudUpload, Loader2 } from 'lucide-react';
 import { parseHeroHandDetails } from '../services/statsParser';
+import { uploadToGCS, streamToBigQuery } from '../services/gcp';
 
 export const HistorySidebar: React.FC = () => {
-  const { hands, setSelectedHand, deleteHand, selectedHand, updateHand, setViewMode, user } = usePoker();
+  const { hands, setSelectedHand, deleteHand, selectedHand, updateHand, setViewMode, user, addToast } = usePoker();
   const [searchQuery, setSearchQuery] = useState('');
   const [noteText, setNoteText] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [isSyncing, setIsSyncing] = useState(false);
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   
@@ -99,6 +101,32 @@ export const HistorySidebar: React.FC = () => {
     downloadAnchorNode.remove();
   };
 
+  const handleCloudSync = async () => {
+      if (!user?.settings?.gcp?.accessToken) {
+          addToast({ title: "GCP Settings Missing", description: "Configure Google Cloud in Profile first.", type: 'error' });
+          return;
+      }
+      
+      setIsSyncing(true);
+      try {
+          // 1. Storage Upload
+          await uploadToGCS(hands, user.settings.gcp);
+          
+          // 2. BigQuery Streaming
+          const bqResult = await streamToBigQuery(hands, user.settings.gcp);
+          
+          addToast({ 
+              title: "Cloud Sync Complete", 
+              description: `Uploaded backup. Streamed ${bqResult.inserted} rows to BigQuery.`, 
+              type: 'success' 
+          });
+      } catch (e: any) {
+          addToast({ title: "Sync Failed", description: e.message, type: 'error' });
+      } finally {
+          setIsSyncing(false);
+      }
+  };
+
   return (
     <div className="flex flex-col h-full bg-[#0a0a0a] border-r border-zinc-900">
       {/* Header - Sticky */}
@@ -109,6 +137,14 @@ export const HistorySidebar: React.FC = () => {
             Hand History
           </h2>
           <div className="flex items-center gap-2">
+             <button 
+                onClick={handleCloudSync} 
+                disabled={isSyncing}
+                className={`p-1.5 rounded-lg transition-colors ${isSyncing ? 'text-poker-gold animate-pulse bg-zinc-800' : 'text-zinc-600 hover:text-white hover:bg-zinc-800'}`} 
+                title="Sync to Google Cloud"
+             >
+                {isSyncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CloudUpload className="w-3.5 h-3.5" />}
+             </button>
              <button onClick={handleExportDB} className="p-1.5 hover:bg-zinc-800 rounded-lg text-zinc-600 hover:text-white transition-colors" title="Export JSON">
                 <Download className="w-3.5 h-3.5" />
              </button>

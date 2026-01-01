@@ -131,6 +131,21 @@ export interface PokerRange {
     color: string;
 }
 
+export interface GCPSettings {
+    projectId: string;
+    bucketName: string;
+    datasetId: string;
+    tableId: string;
+    accessToken?: string; // Stored temporarily or handled via Auth provider in prod
+}
+
+export interface AISettings {
+    provider: 'google' | 'openrouter';
+    googleApiKey?: string;
+    openRouterApiKey?: string;
+    model: string; // e.g. "gemini-2.0-flash-exp" or "google/gemini-2.0-flash-001"
+}
+
 export interface UserSettings {
   rakebackPercentage: number; // 0-100
   currencyRates: Record<string, number>;
@@ -139,6 +154,8 @@ export interface UserSettings {
   hudOpacity: number; // 0 - 1
   tagTemplates: string[];
   savedRanges: PokerRange[];
+  gcp?: GCPSettings;
+  ai: AISettings;
 }
 
 export interface User {

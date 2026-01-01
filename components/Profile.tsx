@@ -1,7 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 import { usePoker } from '../App';
-import { User as UserIcon, CreditCard, Clock, Settings, LogOut, CheckCircle, Trash2, Database, Sliders, DollarSign, Layout, Monitor, Save, Upload } from 'lucide-react';
+import { User as UserIcon, CreditCard, Clock, Settings, LogOut, CheckCircle, Trash2, Database, Sliders, DollarSign, Layout, Monitor, Save, Upload, Cloud, Server, Key, Bot } from 'lucide-react';
 import { importDatabase } from '../services/storage';
 
 export const Profile: React.FC = () => {
@@ -14,6 +14,19 @@ export const Profile: React.FC = () => {
   const [hudOpacity, setHudOpacity] = useState(user?.settings?.hudOpacity ?? 1);
   const [currencies, setCurrencies] = useState(JSON.stringify(user?.settings?.currencyRates || { 'USD': 1, 'EUR': 0.92 }, null, 2));
   
+  // GCP State
+  const [gcpProject, setGcpProject] = useState(user?.settings?.gcp?.projectId || '');
+  const [gcpBucket, setGcpBucket] = useState(user?.settings?.gcp?.bucketName || '');
+  const [gcpDataset, setGcpDataset] = useState(user?.settings?.gcp?.datasetId || '');
+  const [gcpTable, setGcpTable] = useState(user?.settings?.gcp?.tableId || 'poker_hands');
+  const [gcpToken, setGcpToken] = useState(user?.settings?.gcp?.accessToken || '');
+
+  // AI State
+  const [aiProvider, setAiProvider] = useState<'google' | 'openrouter'>(user?.settings?.ai?.provider || 'google');
+  const [googleKey, setGoogleKey] = useState(user?.settings?.ai?.googleApiKey || '');
+  const [openRouterKey, setOpenRouterKey] = useState(user?.settings?.ai?.openRouterApiKey || '');
+  const [selectedModel, setSelectedModel] = useState(user?.settings?.ai?.model || 'gemini-2.0-flash-exp');
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!user) return null;
@@ -29,7 +42,20 @@ export const Profile: React.FC = () => {
                   appScale: scale,
                   uiDensity: density,
                   hudOpacity: hudOpacity,
-                  currencyRates: parsedCurrencies
+                  currencyRates: parsedCurrencies,
+                  gcp: {
+                      projectId: gcpProject,
+                      bucketName: gcpBucket,
+                      datasetId: gcpDataset,
+                      tableId: gcpTable,
+                      accessToken: gcpToken
+                  },
+                  ai: {
+                      provider: aiProvider,
+                      googleApiKey: googleKey,
+                      openRouterApiKey: openRouterKey,
+                      model: selectedModel
+                  }
               }
           });
           addToast({ title: "Settings Saved", type: 'success' });
@@ -99,9 +125,157 @@ export const Profile: React.FC = () => {
             </button>
         </div>
 
+        {/* AI Configuration */}
+        <div className="bg-zinc-900/30 border border-border rounded-2xl p-6 space-y-6">
+            <div className="flex items-center gap-3 mb-2 border-b border-zinc-800 pb-4">
+                <div className="p-2 bg-purple-500/10 text-purple-400 rounded-lg">
+                    <Bot className="w-5 h-5" />
+                </div>
+                <h3 className="font-bold text-white">AI Engine Configuration</h3>
+            </div>
+
+            <div className="space-y-6">
+                <div>
+                    <label className="block text-xs font-bold text-zinc-500 uppercase mb-2">Provider</label>
+                    <div className="flex gap-4">
+                        <button 
+                            onClick={() => { setAiProvider('google'); setSelectedModel('gemini-2.0-flash-exp'); }}
+                            className={`flex-1 py-3 px-4 rounded-xl border font-bold text-sm transition-all ${
+                                aiProvider === 'google' 
+                                ? 'bg-zinc-800 border-poker-gold text-white shadow-md' 
+                                : 'bg-zinc-950 border-zinc-800 text-zinc-500 hover:border-zinc-700'
+                            }`}
+                        >
+                            Google GenAI
+                        </button>
+                        <button 
+                            onClick={() => { setAiProvider('openrouter'); setSelectedModel('google/gemini-2.0-flash-001'); }}
+                            className={`flex-1 py-3 px-4 rounded-xl border font-bold text-sm transition-all ${
+                                aiProvider === 'openrouter' 
+                                ? 'bg-zinc-800 border-poker-gold text-white shadow-md' 
+                                : 'bg-zinc-950 border-zinc-800 text-zinc-500 hover:border-zinc-700'
+                            }`}
+                        >
+                            OpenRouter
+                        </button>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-2">
+                            {aiProvider === 'google' ? 'Google API Key' : 'OpenRouter API Key'}
+                        </label>
+                        <div className="relative">
+                            <Key className="absolute left-3 top-2.5 w-4 h-4 text-zinc-600" />
+                            <input 
+                                type="password" 
+                                value={aiProvider === 'google' ? googleKey : openRouterKey} 
+                                onChange={(e) => aiProvider === 'google' ? setGoogleKey(e.target.value) : setOpenRouterKey(e.target.value)}
+                                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg py-2 pl-10 pr-3 text-sm text-white focus:outline-none focus:border-poker-gold"
+                                placeholder={aiProvider === 'google' ? "AIzaSy..." : "sk-or-..."}
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-2">Selected Model</label>
+                        <select 
+                            value={selectedModel}
+                            onChange={(e) => setSelectedModel(e.target.value)}
+                            className="w-full bg-zinc-950 border border-zinc-800 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:border-poker-gold"
+                        >
+                            {aiProvider === 'google' ? (
+                                <>
+                                    <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash (Preview)</option>
+                                    <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                                    <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                                </>
+                            ) : (
+                                <>
+                                    <option value="google/gemini-2.0-flash-001">Google Gemini 2.0 Flash</option>
+                                    <option value="google/gemini-2.0-pro-exp-02-05:free">Google Gemini 2.0 Pro Exp (Free)</option>
+                                    <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
+                                    <option value="openai/gpt-4o">GPT-4o</option>
+                                </>
+                            )}
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {/* Cloud Integrations */}
+        <div className="bg-zinc-900/30 border border-border rounded-2xl p-6 space-y-6">
+            <div className="flex items-center gap-3 mb-2 border-b border-zinc-800 pb-4">
+                <div className="p-2 bg-blue-500/10 text-blue-400 rounded-lg">
+                    <Cloud className="w-5 h-5" />
+                </div>
+                <h3 className="font-bold text-white">Google Cloud Integration</h3>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">GCP Project ID</label>
+                        <input 
+                            type="text" 
+                            value={gcpProject} onChange={(e) => setGcpProject(e.target.value)}
+                            className="w-full bg-zinc-950 border border-zinc-800 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:border-poker-gold"
+                            placeholder="my-poker-project-123"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Cloud Storage Bucket</label>
+                        <input 
+                            type="text" 
+                            value={gcpBucket} onChange={(e) => setGcpBucket(e.target.value)}
+                            className="w-full bg-zinc-950 border border-zinc-800 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:border-poker-gold"
+                            placeholder="my-hand-histories"
+                        />
+                    </div>
+                </div>
+                <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">BigQuery Dataset</label>
+                            <input 
+                                type="text" 
+                                value={gcpDataset} onChange={(e) => setGcpDataset(e.target.value)}
+                                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:border-poker-gold"
+                                placeholder="poker_analytics"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Table ID</label>
+                            <input 
+                                type="text" 
+                                value={gcpTable} onChange={(e) => setGcpTable(e.target.value)}
+                                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:border-poker-gold"
+                                placeholder="hands_raw"
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-1 flex items-center gap-2">
+                            OAuth Access Token <Key className="w-3 h-3" />
+                        </label>
+                        <input 
+                            type="password" 
+                            value={gcpToken} onChange={(e) => setGcpToken(e.target.value)}
+                            className="w-full bg-zinc-950 border border-zinc-800 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:border-poker-gold"
+                            placeholder="ya29.a0..."
+                        />
+                        <p className="text-[10px] text-zinc-500 mt-1">
+                            Requires 'Storage Object Admin' and 'BigQuery Data Editor' scopes. 
+                            <span className="text-red-400"> Do not use in production without backend proxy.</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         {/* Settings Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
             {/* Display & Layout */}
             <div className="bg-surface border border-border rounded-2xl p-6 space-y-6">
                 <div className="flex items-center gap-3 mb-2 border-b border-zinc-800 pb-4">
