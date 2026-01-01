@@ -2,7 +2,7 @@ import { ChannelVideo, YouTubeChannel } from '../types';
 
 const BASE_URL = 'https://www.googleapis.com/youtube/v3';
 // Note: In a production environment, restrict this key or use a backend proxy.
-const API_KEY = 'AIzaSyBjuDHLbZtqERIrMZRx_i6QbWXujwK7RYk'; 
+const API_KEY = process.env.YOUTUBE_API_KEY || ''; 
 
 export const FEATURED_CHANNELS = {
   HCL: 'UCQe7wB0o_cZgv1ogdBpGDtQ',
