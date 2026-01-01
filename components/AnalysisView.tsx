@@ -34,7 +34,7 @@ export const AnalysisView: React.FC = () => {
 
   useEffect(() => {
     if (activeVideoUrl) {
-        setUrl(activeVideoUrl);
+        setUrl(activeVideoUrl || '');
         setFile(null);
         setStatus(AnalysisStatus.IDLE);
         setResult(null);
@@ -160,12 +160,12 @@ export const AnalysisView: React.FC = () => {
     const cleanText = sanitizeHandHistory(rawContent);
     const lines = cleanText.split('\n');
     const heroLine = lines.find(l => l.includes('Dealt to'));
-    const hero = heroLine ? heroLine.split('Dealt to ')[1].split(' [')[0] : 'Hero';
+    const hero = heroLine ? (heroLine.split('Dealt to ')[1]?.split(' [')[0] || 'Hero') : 'Hero';
     const potLine = lines.find(l => l.includes('Total pot'));
-    const pot = potLine ? potLine.match(/\$[\d,.]+/)?.[0] : '$0';
+    const pot = potLine ? (potLine.match(/\$[\d,.]+/)?.[0] || '$0') : '$0';
     
     const newHand = saveHand({
-      videoUrl: url,
+      videoUrl: url || undefined,
       hero,
       stakes: lines.find(l => l.includes('($'))?.match(/\(\$[\d.]+\/\$[\d.]+/)?.[0]?.replace(/[()]/g, '') || '$100/$200',
       rawText: cleanText,
@@ -345,7 +345,7 @@ export const AnalysisView: React.FC = () => {
                         {(url || filePreviewUrl) && !playerError && (
                             <div className="w-full h-full relative z-10 bg-black">
                                 <Player
-                                    url={filePreviewUrl || url}
+                                    url={filePreviewUrl || url || undefined}
                                     width="100%"
                                     height="100%"
                                     controls={true}
