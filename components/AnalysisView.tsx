@@ -112,7 +112,12 @@ export const AnalysisView: React.FC = () => {
     setResult(null);
     setStreamingContent('');
     setLogs([]); 
-    addLog(`Initializing Vision pipeline for ${siteFormat}...`, 'system');
+    
+    if (file) {
+        addLog(`Initializing Gemini 1.5 Pro Vision Pipeline for ${file.name}...`, 'system');
+    } else {
+        addLog(`Initializing Gemini 3 Pro Search Agent for URL...`, 'system');
+    }
 
     try {
         setTimeout(() => setProgressStep(2), 1500);
@@ -199,7 +204,7 @@ export const AnalysisView: React.FC = () => {
               Video Analysis
             </h1>
             <p className="text-sm text-zinc-400 font-medium max-w-xl">
-              Upload footage or paste a URL. Our AI extracts player stacks, hole cards, and action history in real-time.
+              Upload footage for <span className="text-white font-bold">Pixel-Perfect Vision Analysis</span> (Gemini 1.5 Pro) or use a URL for metadata search.
             </p>
           </div>
           
@@ -223,48 +228,43 @@ export const AnalysisView: React.FC = () => {
                     <div className="absolute top-0 right-0 w-32 h-32 bg-poker-emerald/5 rounded-full blur-2xl -mr-16 -mt-16 pointer-events-none"></div>
 
                     <div className="space-y-4 relative z-10">
-                        <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
-                            <Film className="w-3 h-3" /> Input Source
-                        </label>
-                        
-                        <div className="space-y-3">
-                            <div className="relative group">
-                                <input 
-                                    type="text" 
-                                    placeholder="YouTube URL..."
-                                    className="w-full bg-black/40 border border-zinc-800 rounded-xl px-4 py-3 pl-10 text-xs text-white focus:border-poker-emerald focus:ring-1 focus:ring-poker-emerald transition-all shadow-inner"
-                                    value={url}
-                                    onChange={(e) => { setUrl(e.target.value); if(file) setFile(null); setPlayerError(false); }}
-                                />
-                                <Youtube className="absolute left-3 top-3 w-4 h-4 text-zinc-600 group-focus-within:text-red-500 transition-colors" />
-                            </div>
+                        <div 
+                            onClick={() => fileInputRef.current?.click()}
+                            className={`group relative border border-dashed rounded-xl p-6 transition-all cursor-pointer text-center flex flex-col items-center justify-center ${
+                                file ? 'border-poker-emerald/50 bg-poker-emerald/5' : 'border-zinc-800 hover:border-zinc-600 hover:bg-zinc-800/50'
+                            }`}
+                        >
+                            <input type="file" ref={fileInputRef} className="hidden" accept="video/*" onChange={(e) => { setFile(e.target.files?.[0] || null); if(url) setUrl(''); }} />
+                            {file ? (
+                                <div className="flex flex-col items-center gap-2 animate-in zoom-in duration-300">
+                                    <FileVideo className="w-8 h-8 text-poker-emerald" />
+                                    <span className="text-xs font-bold text-white max-w-[150px] truncate">{file.name}</span>
+                                    <span className="text-[10px] text-zinc-500">{(file.size / 1024 / 1024).toFixed(1)} MB • Ready</span>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center gap-2 text-zinc-500 group-hover:text-zinc-300">
+                                    <Upload className="w-6 h-6" />
+                                    <span className="text-xs font-bold text-white">Upload Video File</span>
+                                    <span className="text-[10px]">For Full Vision Analysis</span>
+                                </div>
+                            )}
+                        </div>
 
-                            <div className="relative flex items-center py-2">
-                                <div className="flex-grow border-t border-zinc-800"></div>
-                                <span className="flex-shrink-0 mx-3 text-zinc-700 text-[9px] font-bold uppercase">OR</span>
-                                <div className="flex-grow border-t border-zinc-800"></div>
-                            </div>
+                        <div className="relative flex items-center py-2">
+                            <div className="flex-grow border-t border-zinc-800"></div>
+                            <span className="flex-shrink-0 mx-3 text-zinc-700 text-[9px] font-bold uppercase">OR USE URL</span>
+                            <div className="flex-grow border-t border-zinc-800"></div>
+                        </div>
 
-                            <div 
-                                onClick={() => fileInputRef.current?.click()}
-                                className={`group relative border border-dashed rounded-xl p-6 transition-all cursor-pointer text-center flex flex-col items-center justify-center ${
-                                    file ? 'border-poker-emerald/50 bg-poker-emerald/5' : 'border-zinc-800 hover:border-zinc-600 hover:bg-zinc-800/50'
-                                }`}
-                            >
-                                <input type="file" ref={fileInputRef} className="hidden" accept="video/*" onChange={(e) => { setFile(e.target.files?.[0] || null); if(url) setUrl(''); }} />
-                                {file ? (
-                                    <div className="flex flex-col items-center gap-2 animate-in zoom-in duration-300">
-                                        <FileVideo className="w-8 h-8 text-poker-emerald" />
-                                        <span className="text-xs font-bold text-white max-w-[150px] truncate">{file.name}</span>
-                                        <span className="text-[10px] text-zinc-500">Click to change</span>
-                                    </div>
-                                ) : (
-                                    <div className="flex flex-col items-center gap-2 text-zinc-500 group-hover:text-zinc-300">
-                                        <Upload className="w-6 h-6" />
-                                        <span className="text-xs font-medium">Upload File</span>
-                                    </div>
-                                )}
-                            </div>
+                        <div className="relative group">
+                            <input 
+                                type="text" 
+                                placeholder="YouTube URL..."
+                                className="w-full bg-black/40 border border-zinc-800 rounded-xl px-4 py-3 pl-10 text-xs text-white focus:border-poker-emerald focus:ring-1 focus:ring-poker-emerald transition-all shadow-inner"
+                                value={url}
+                                onChange={(e) => { setUrl(e.target.value); if(file) setFile(null); setPlayerError(false); }}
+                            />
+                            <Youtube className="absolute left-3 top-3 w-4 h-4 text-zinc-600 group-focus-within:text-red-500 transition-colors" />
                         </div>
 
                         <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2 pt-2">
