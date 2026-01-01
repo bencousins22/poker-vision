@@ -1,0 +1,5 @@
+{
+  "name": "PokerVision - HCL to PokerStars Converter",
+  "description": "An AI-powered tool that analyzes Hustler Casino Live video clips and converts them into standard PokerStars Hand History format for database analysis.",
+  "requestFramePermissions": []
+}
