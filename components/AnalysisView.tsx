@@ -5,7 +5,7 @@ import { analyzePokerVideo } from '../services/gemini';
 import { saveHand } from '../services/storage';
 import { usePoker } from '../App';
 import ReactPlayer from 'react-player';
-import { Upload, Loader2, Youtube, Terminal, Copy, Save, Wand2, FileText, Film, Sparkles, FileVideo, Eye, DollarSign, Layers, Maximize, Minimize, Scan, Activity, Aperture, AlertTriangle, PlayCircle, ArrowRight, Settings2, ExternalLink, Check, Cloud } from 'lucide-react';
+import { Upload, Loader2, Youtube, Terminal, Copy, Save, Wand2, FileText, Film, Sparkles, FileVideo, Eye, DollarSign, Layers, Maximize, Minimize, Scan, Activity, Aperture, AlertTriangle, PlayCircle, ArrowRight, Settings2, ExternalLink, Check, Cloud, RefreshCw } from 'lucide-react';
 
 const AnalysisPipeline: React.FC<{ step: number }> = ({ step }) => {
     const steps = [
@@ -155,7 +155,7 @@ export const AnalysisView: React.FC = () => {
     const sourceMsg = file ? `Video File (${file.name})` : 'YouTube URL';
     addLog(`Initializing Analysis for ${sourceMsg}...`, 'system');
     addLog(`Protocol: ${siteFormat}`, 'system');
-    addLog(`AI Provider: ${user?.settings?.ai?.provider || 'Default'}`, 'system');
+    addLog(`AI Provider: ${user?.settings?.ai?.provider || 'Default'} - Model: ${user?.settings?.ai?.model}`, 'system');
 
     try {
         setTimeout(() => setProgressStep(2), 1500);
@@ -182,7 +182,7 @@ export const AnalysisView: React.FC = () => {
     } catch (err: any) {
         setError(err.message);
         setStatus(AnalysisStatus.ERROR);
-        addLog(`Error: ${err.message}`, 'error');
+        addLog(`Critical Failure: ${err.message}`, 'error');
     }
   };
 
@@ -233,7 +233,7 @@ export const AnalysisView: React.FC = () => {
   return (
     <div className="flex-1 flex flex-col h-full bg-gradient-to-b from-background to-black/80 overflow-hidden">
       
-      {/* Header - Fixed Height */}
+      {/* Header */}
       <div className="shrink-0 flex flex-col md:flex-row md:items-end justify-between gap-4 px-6 py-4 border-b border-white/5 bg-background/50 backdrop-blur-sm z-10">
           <div className="space-y-1">
             <div className="inline-flex items-center gap-2 px-2 py-0.5 rounded-full bg-poker-emerald/10 border border-poker-emerald/20 text-poker-emerald text-[10px] font-bold uppercase tracking-wider shadow-[0_0_15px_rgba(16,185,129,0.2)]">
@@ -245,23 +245,33 @@ export const AnalysisView: React.FC = () => {
           </div>
           
           <div className="flex items-center gap-3">
-             <div className="px-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded-full flex items-center gap-2">
-                <div className={`w-1.5 h-1.5 rounded-full ${status === AnalysisStatus.PROCESSING ? 'bg-poker-gold animate-pulse' : 'bg-poker-green'}`}></div>
-                <span className="text-[10px] font-mono text-zinc-300 uppercase tracking-wider">
-                    {status === AnalysisStatus.PROCESSING ? 'PROCESSING' : 'READY'}
+             <div className={`px-3 py-1.5 border rounded-full flex items-center gap-2 transition-colors ${status === AnalysisStatus.ERROR ? 'bg-red-950/30 border-red-900 text-red-400' : 'bg-zinc-900 border-zinc-800 text-zinc-300'}`}>
+                {status === AnalysisStatus.ERROR ? <AlertTriangle className="w-3 h-3" /> : <div className={`w-1.5 h-1.5 rounded-full ${status === AnalysisStatus.PROCESSING ? 'bg-poker-gold animate-pulse' : 'bg-poker-green'}`}></div>}
+                <span className="text-[10px] font-mono uppercase tracking-wider">
+                    {status === AnalysisStatus.ERROR ? 'ERROR' : status === AnalysisStatus.PROCESSING ? 'PROCESSING' : 'READY'}
                 </span>
              </div>
           </div>
       </div>
 
-      {/* Main Grid Content - Fills remaining height */}
+      {/* Main Grid Content */}
       <div className="flex-1 min-h-0 p-4 lg:p-6 overflow-hidden">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-full">
             
-            {/* LEFT: Controls - Scrollable independently */}
+            {/* LEFT: Controls */}
             <div className="lg:col-span-3 flex flex-col h-full overflow-hidden">
                 <div className="bg-gradient-to-b from-zinc-900/50 to-zinc-950/50 border border-white/5 rounded-2xl p-4 flex flex-col gap-4 shadow-xl backdrop-blur-md h-full relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-poker-emerald/5 rounded-full blur-2xl -mr-16 -mt-16 pointer-events-none"></div>
+
+                    {error && (
+                        <div className="bg-red-500/10 border border-red-500/30 p-3 rounded-lg flex flex-col gap-1 relative overflow-hidden animate-in slide-in-from-left-2">
+                            <div className="flex items-center gap-2 text-red-400 font-bold text-xs uppercase tracking-wider">
+                                <AlertTriangle className="w-3.5 h-3.5" /> Analysis Failed
+                            </div>
+                            <p className="text-[10px] text-zinc-300 leading-snug">{error}</p>
+                            <button onClick={() => { setError(null); setStatus(AnalysisStatus.IDLE); }} className="absolute top-2 right-2 text-red-400 hover:text-white"><RefreshCw className="w-3 h-3" /></button>
+                        </div>
+                    )}
 
                     <div className="space-y-4 relative z-10 overflow-y-auto flex-1 scrollbar-none">
                         {/* File Input */}
@@ -333,12 +343,6 @@ export const AnalysisView: React.FC = () => {
                                 </select>
                                 <div className="absolute right-3 top-2.5 pointer-events-none text-zinc-500 text-[10px]">▼</div>
                             </div>
-                            
-                            {siteFormat.includes('Hustler') && (
-                                <div className="mt-2 px-3 py-1.5 bg-poker-emerald/10 border border-poker-emerald/20 rounded-lg text-[9px] text-poker-emerald font-bold flex items-center gap-2 animate-in fade-in slide-in-from-top-1">
-                                    <Scan className="w-3 h-3" /> HCL Overlay Active
-                                </div>
-                            )}
                         </div>
                     </div>
 
@@ -367,17 +371,16 @@ export const AnalysisView: React.FC = () => {
                 </div>
             </div>
 
-            {/* CENTER: Video & HUD - Flex Column */}
+            {/* CENTER: Video & HUD */}
             <div className="lg:col-span-6 flex flex-col h-full overflow-hidden gap-4">
                 
-                {/* Status Stepper (Visible only during processing) */}
                 {status !== AnalysisStatus.IDLE && (
                     <div className="bg-zinc-900/50 p-4 rounded-xl border border-zinc-800 animate-slide-up">
                         <AnalysisPipeline step={progressStep} />
                     </div>
                 )}
 
-                {/* Advanced Player Container - Resizable but constrained */}
+                {/* Player Container */}
                 <div className={`transition-all duration-500 ease-in-out shrink-0 ${
                     isCinemaMode 
                     ? 'fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 backdrop-blur-xl' 
@@ -387,7 +390,6 @@ export const AnalysisView: React.FC = () => {
                         isCinemaMode ? 'max-w-7xl aspect-video rounded-xl shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-white/10' : 'rounded-2xl'
                     }`}>
                         
-                        {/* Error State */}
                         {playerError && (
                             <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-950 z-20 p-6 text-center">
                                 <AlertTriangle className="w-8 h-8 text-yellow-500 mb-2" />
@@ -408,7 +410,6 @@ export const AnalysisView: React.FC = () => {
                             </div>
                         )}
 
-                        {/* React Player Instance */}
                         {(url || filePreviewUrl) && !playerError && (
                             <div className="w-full h-full relative z-10 bg-black">
                                 <Player
@@ -432,7 +433,6 @@ export const AnalysisView: React.FC = () => {
                             </div>
                         )}
 
-                        {/* Placeholder */}
                         {!(url || filePreviewUrl) && (
                              <div className="absolute inset-0 flex flex-col items-center justify-center text-zinc-700 bg-zinc-950">
                                 <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:24px_24px]"></div>
@@ -470,7 +470,7 @@ export const AnalysisView: React.FC = () => {
                     </div>
                 </div>
 
-                {/* HUD Stats - Filling remaining vertical space */}
+                {/* HUD Stats */}
                 <div className="flex-1 min-h-0 bg-zinc-900/30 rounded-2xl border border-zinc-800/50 p-4 overflow-y-auto">
                     {(streamingContent || result) ? (
                         <div className="grid grid-cols-3 gap-3 animate-slide-up">
@@ -502,7 +502,7 @@ export const AnalysisView: React.FC = () => {
                 </div>
             </div>
 
-            {/* RIGHT: Logs & Output - Independent Scroll */}
+            {/* RIGHT: Logs & Output */}
             <div className="lg:col-span-3 flex flex-col h-full gap-4 overflow-hidden">
                 <div className="flex-1 bg-[#0c0c0c] rounded-2xl border border-zinc-800 overflow-hidden flex flex-col shadow-xl">
                     <div className="bg-zinc-900/50 px-3 py-2.5 border-b border-zinc-800 flex justify-between items-center shrink-0">
@@ -529,7 +529,7 @@ export const AnalysisView: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Text Output Preview (Fixed small height) */}
+                {/* Text Output Preview */}
                 <div className="h-1/3 min-h-[150px] shrink-0 bg-zinc-900 rounded-2xl border border-zinc-800 overflow-hidden flex flex-col shadow-xl relative">
                     <div className="px-3 py-2 border-b border-zinc-800 flex justify-between items-center bg-black/20 shrink-0">
                         <span className="text-[9px] font-bold text-zinc-400 uppercase flex items-center gap-2">
@@ -554,7 +554,6 @@ export const AnalysisView: React.FC = () => {
                                 {sanitizeHandHistory(result?.handHistory || streamingContent)}
                             </pre>
                         </div>
-                        {/* CTA Button Overlay */}
                         {status === AnalysisStatus.COMPLETE && (
                             <div className="absolute bottom-3 left-3 right-3 animate-slide-up">
                                 <button 

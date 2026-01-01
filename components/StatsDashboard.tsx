@@ -37,7 +37,16 @@ const CustomTooltip = ({ active, payload, label, formatter }: { active?: boolean
     return null;
 };
 
-const KPICard = ({ label, value, subtext, icon: Icon, trend, color = "emerald" }: any) => {
+interface KPICardProps {
+    label: string;
+    value: string | number;
+    subtext: string;
+    icon: any;
+    trend?: number;
+    color?: string;
+}
+
+const KPICard = ({ label, value, subtext, icon: Icon, trend, color = "emerald" }: KPICardProps) => {
     const colorStyles: Record<string, string> = {
         emerald: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20",
         blue: "text-blue-500 bg-blue-500/10 border-blue-500/20",
@@ -74,7 +83,7 @@ const KPICard = ({ label, value, subtext, icon: Icon, trend, color = "emerald" }
 
 // --- Sub-Views ---
 
-const OverviewTab = ({ hands, stats, timeFilter, setTimeFilter }: any) => {
+const OverviewTab = ({ hands, stats, timeFilter, setTimeFilter }: { hands: HandHistory[], stats: PlayerStats[], timeFilter: string, setTimeFilter: (v: any) => void }) => {
     const heroStats = stats[0];
     const sessions = useMemo(() => calculateSessions(hands), [hands]);
     
@@ -206,7 +215,7 @@ const OverviewTab = ({ hands, stats, timeFilter, setTimeFilter }: any) => {
                                     tick={{fontSize: 10, fill: '#52525b'}} 
                                     axisLine={false} 
                                     tickLine={false} 
-                                    tickFormatter={(val: number) => `$${val}`}
+                                    tickFormatter={(val: any) => `$${val}`}
                                     width={40}
                                 />
                                 <Tooltip content={<CustomTooltip formatter={(val: number) => `$${val.toLocaleString()}`} />} />

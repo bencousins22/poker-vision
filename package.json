@@ -1,3 +1,4 @@
+
 {
   "name": "pokervision-pro",
   "private": true,
@@ -10,6 +11,7 @@
   },
   "dependencies": {
     "@google/genai": "^0.1.1",
+    "@react-oauth/google": "^0.12.1",
     "clsx": "^2.1.0",
     "framer-motion": "^11.0.8",
     "lucide-react": "^0.344.0",

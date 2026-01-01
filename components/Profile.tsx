@@ -1,7 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 import { usePoker } from '../App';
-import { User as UserIcon, CreditCard, Clock, Settings, LogOut, CheckCircle, Trash2, Database, Sliders, DollarSign, Layout, Monitor, Save, Upload, Cloud, Server, Key, Bot, Youtube } from 'lucide-react';
+import { User as UserIcon, CreditCard, Clock, Settings, LogOut, CheckCircle, Trash2, Database, Sliders, DollarSign, Layout, Monitor, Save, Upload, Cloud, Server, Key, Bot, Youtube, Check } from 'lucide-react';
 import { importDatabase } from '../services/storage';
 
 export const Profile: React.FC = () => {
@@ -22,10 +22,10 @@ export const Profile: React.FC = () => {
   const [gcpToken, setGcpToken] = useState(user?.settings?.gcp?.accessToken || '');
 
   // AI State
-  const [aiProvider, setAiProvider] = useState<'google' | 'openrouter'>(user?.settings?.ai?.provider || 'google');
+  const [aiProvider, setAiProvider] = useState<'google' | 'openrouter' | 'google-oauth'>(user?.settings?.ai?.provider || 'google');
   const [googleKey, setGoogleKey] = useState(user?.settings?.ai?.googleApiKey || '');
   const [openRouterKey, setOpenRouterKey] = useState(user?.settings?.ai?.openRouterApiKey || '');
-  const [selectedModel, setSelectedModel] = useState(user?.settings?.ai?.model || 'gemini-2.0-flash-exp');
+  const [selectedModel, setSelectedModel] = useState(user?.settings?.ai?.model || 'gemini-3-flash-preview');
 
   // YouTube API Key
   const [youtubeKey, setYoutubeKey] = useState(user?.settings?.youtubeApiKey || '');
@@ -58,7 +58,8 @@ export const Profile: React.FC = () => {
                       provider: aiProvider,
                       googleApiKey: googleKey,
                       openRouterApiKey: openRouterKey,
-                      model: selectedModel
+                      model: selectedModel,
+                      accessToken: user.settings.ai.accessToken // Preserve access token
                   }
               }
           });
@@ -118,7 +119,11 @@ export const Profile: React.FC = () => {
                     }`}>
                         {user.subscription} Plan
                     </span>
-                    <button className="text-xs text-zinc-400 hover:text-white underline">Change Password</button>
+                    {user.settings.ai.accessToken && (
+                        <span className="flex items-center gap-1 text-[10px] text-green-400 bg-green-900/20 px-2 py-1 rounded border border-green-900/30">
+                            <Check className="w-3 h-3" /> Connected with Google
+                        </span>
+                    )}
                 </div>
             </div>
             <button 
@@ -149,14 +154,14 @@ export const Profile: React.FC = () => {
                     
                     <div className="flex gap-4">
                         <button 
-                            onClick={() => { setAiProvider('google'); setSelectedModel('gemini-2.0-flash-exp'); }}
+                            onClick={() => { setAiProvider('google'); setSelectedModel('gemini-3-flash-preview'); }}
                             className={`flex-1 py-3 px-4 rounded-xl border font-bold text-sm transition-all ${
                                 aiProvider === 'google' 
                                 ? 'bg-zinc-800 border-poker-gold text-white shadow-md' 
                                 : 'bg-zinc-950 border-zinc-800 text-zinc-500 hover:border-zinc-700'
                             }`}
                         >
-                            Google GenAI
+                            Google API Key
                         </button>
                         <button 
                             onClick={() => { setAiProvider('openrouter'); setSelectedModel('google/gemini-3-flash-preview'); }}
@@ -168,20 +173,38 @@ export const Profile: React.FC = () => {
                         >
                             OpenRouter
                         </button>
+                        {user.settings.ai.accessToken && (
+                            <button 
+                                onClick={() => { setAiProvider('google-oauth'); setSelectedModel('gemini-3-flash-preview'); }}
+                                className={`flex-1 py-3 px-4 rounded-xl border font-bold text-sm transition-all ${
+                                    aiProvider === 'google-oauth' 
+                                    ? 'bg-zinc-800 border-poker-gold text-white shadow-md' 
+                                    : 'bg-zinc-950 border-zinc-800 text-zinc-500 hover:border-zinc-700'
+                                }`}
+                            >
+                                Google Account
+                            </button>
+                        )}
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label className="block text-xs font-bold text-zinc-500 uppercase mb-2">
-                                {aiProvider === 'google' ? 'Google API Key' : 'OpenRouter API Key'}
+                                {aiProvider === 'google' ? 'Google API Key' : aiProvider === 'openrouter' ? 'OpenRouter API Key' : 'Access Token'}
                             </label>
-                            <input 
-                                type="password" 
-                                value={aiProvider === 'google' ? googleKey : openRouterKey} 
-                                onChange={(e) => aiProvider === 'google' ? setGoogleKey(e.target.value) : setOpenRouterKey(e.target.value)}
-                                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:border-poker-gold"
-                                placeholder={aiProvider === 'google' ? "AIzaSy..." : "sk-or-..."}
-                            />
+                            {aiProvider === 'google-oauth' ? (
+                                <div className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg py-2 px-3 text-sm text-zinc-400 italic">
+                                    Managed via Google Login
+                                </div>
+                            ) : (
+                                <input 
+                                    type="password" 
+                                    value={aiProvider === 'google' ? googleKey : openRouterKey} 
+                                    onChange={(e) => aiProvider === 'google' ? setGoogleKey(e.target.value) : setOpenRouterKey(e.target.value)}
+                                    className="w-full bg-zinc-950 border border-zinc-800 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:border-poker-gold"
+                                    placeholder={aiProvider === 'google' ? "AIzaSy..." : "sk-or-..."}
+                                />
+                            )}
                         </div>
                         <div>
                             <label className="block text-xs font-bold text-zinc-500 uppercase mb-2">Selected Model</label>
@@ -190,17 +213,18 @@ export const Profile: React.FC = () => {
                                 onChange={(e) => setSelectedModel(e.target.value)}
                                 className="w-full bg-zinc-950 border border-zinc-800 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:border-poker-gold"
                             >
-                                {aiProvider === 'google' ? (
+                                {aiProvider.includes('google') ? (
                                     <>
-                                        <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash (Preview)</option>
-                                        <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
-                                        <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                                        <option value="gemini-3-flash-preview">Gemini 3 Flash (Preview)</option>
+                                        <option value="gemini-3-pro-preview">Gemini 3 Pro (Preview)</option>
+                                        <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash</option>
+                                        <option value="gemini-2.0-pro-exp-02-05">Gemini 2.0 Pro</option>
                                     </>
                                 ) : (
                                     <>
                                         <option value="google/gemini-3-flash-preview">Google Gemini 3 Flash Preview</option>
                                         <option value="google/gemini-2.0-flash-001">Google Gemini 2.0 Flash</option>
-                                        <option value="google/gemini-2.0-pro-exp-02-05:free">Google Gemini 2.0 Pro Exp (Free)</option>
+                                        <option value="google/gemini-2.0-pro-exp-02-05:free">Google Gemini 2.0 Pro Exp</option>
                                         <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
                                         <option value="openai/gpt-4o">GPT-4o</option>
                                     </>
@@ -294,95 +318,6 @@ export const Profile: React.FC = () => {
                             Requires 'Storage Object Admin' and 'BigQuery Data Editor' scopes. 
                             <span className="text-red-400"> Do not use in production without backend proxy.</span>
                         </p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        {/* Settings Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Display & Layout */}
-            <div className="bg-surface border border-border rounded-2xl p-6 space-y-6">
-                <div className="flex items-center gap-3 mb-2 border-b border-zinc-800 pb-4">
-                    <div className="p-2 bg-blue-500/10 text-blue-400 rounded-lg">
-                        <Monitor className="w-5 h-5" />
-                    </div>
-                    <h3 className="font-bold text-white">Display & Interface</h3>
-                </div>
-                
-                <div className="space-y-4">
-                    <div>
-                        <div className="flex justify-between mb-2">
-                            <span className="text-sm text-zinc-300">App Scaling</span>
-                            <span className="text-xs font-mono text-zinc-500">{(scale * 100).toFixed(0)}%</span>
-                        </div>
-                        <input 
-                            type="range" min="0.75" max="1.25" step="0.05"
-                            value={scale} onChange={(e) => setScale(parseFloat(e.target.value))}
-                            className="w-full h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                        />
-                    </div>
-
-                    <div>
-                        <span className="block text-sm text-zinc-300 mb-2">UI Density (Padding)</span>
-                        <div className="flex bg-zinc-900 rounded-lg p-1 border border-zinc-800">
-                            {(['compact', 'normal', 'spacious'] as const).map((d) => (
-                                <button
-                                    key={d}
-                                    onClick={() => setDensity(d)}
-                                    className={`flex-1 py-1.5 text-xs font-bold rounded-md capitalize transition-all ${
-                                        density === d ? 'bg-zinc-700 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'
-                                    }`}
-                                >
-                                    {d}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div>
-                        <div className="flex justify-between mb-2">
-                            <span className="text-sm text-zinc-300">Default HUD Opacity</span>
-                            <span className="text-xs font-mono text-zinc-500">{(hudOpacity * 100).toFixed(0)}%</span>
-                        </div>
-                        <input 
-                            type="range" min="0" max="1" step="0.1"
-                            value={hudOpacity} onChange={(e) => setHudOpacity(parseFloat(e.target.value))}
-                            className="w-full h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                        />
-                    </div>
-                </div>
-            </div>
-
-            {/* Financials & Logic */}
-            <div className="bg-surface border border-border rounded-2xl p-6 space-y-6">
-                <div className="flex items-center gap-3 mb-2 border-b border-zinc-800 pb-4">
-                    <div className="p-2 bg-poker-emerald/10 text-poker-emerald rounded-lg">
-                        <DollarSign className="w-5 h-5" />
-                    </div>
-                    <h3 className="font-bold text-white">Financial Logic</h3>
-                </div>
-
-                <div className="space-y-4">
-                    <div>
-                        <label className="block text-sm text-zinc-300 mb-2">Rakeback Deal (%)</label>
-                        <div className="relative">
-                            <input 
-                                type="number" min="0" max="100"
-                                value={rakeback} onChange={(e) => setRakeback(parseFloat(e.target.value))}
-                                className="w-full bg-zinc-900 border border-zinc-700 rounded-lg py-2 px-3 text-white focus:outline-none focus:border-poker-emerald"
-                            />
-                            <span className="absolute right-3 top-2.5 text-zinc-500 text-xs font-bold">%</span>
-                        </div>
-                        <p className="text-[10px] text-zinc-500 mt-1">Applied to Net Won calculations (Simulated).</p>
-                    </div>
-
-                    <div>
-                        <label className="block text-sm text-zinc-300 mb-2">Currency Rates (JSON)</label>
-                        <textarea 
-                            value={currencies} onChange={(e) => setCurrencies(e.target.value)}
-                            className="w-full h-24 bg-zinc-900 border border-zinc-700 rounded-lg py-2 px-3 text-xs font-mono text-zinc-400 focus:outline-none focus:border-poker-emerald resize-none"
-                        />
                     </div>
                 </div>
             </div>

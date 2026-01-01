@@ -140,10 +140,11 @@ export interface GCPSettings {
 }
 
 export interface AISettings {
-    provider: 'google' | 'openrouter';
+    provider: 'google' | 'openrouter' | 'google-oauth';
     googleApiKey?: string;
     openRouterApiKey?: string;
-    model: string; // e.g. "gemini-2.0-flash-exp" or "google/gemini-2.0-flash-001"
+    model: string; 
+    accessToken?: string;
 }
 
 export interface UserSettings {
