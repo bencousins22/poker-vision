@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { usePoker } from '../App';
 import { RANKS, getMatrixCell, calculateApproxEquity, DEFAULT_RANGES } from '../services/pokerLogic';
@@ -12,7 +11,7 @@ import {
 
 // --- Reusable Components ---
 
-const Card = ({ card, size = 'md' }: { card: string, size?: 'sm' | 'md' | 'lg' }) => {
+const Card: React.FC<{ card: string, size?: 'sm' | 'md' | 'lg' }> = ({ card, size = 'md' }) => {
     if (!card) return null;
     const rank = card.slice(0, -1);
     const suit = card.slice(-1).toLowerCase();

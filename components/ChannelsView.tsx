@@ -192,7 +192,7 @@ const VideoSection: React.FC<{
                         );
                     }) : (
                         <div className="w-full text-center text-zinc-600 text-sm py-8 italic border border-dashed border-zinc-800 rounded-xl">
-                            No videos available or channel not found.
+                            No videos available.
                         </div>
                     )
                 )}
@@ -223,6 +223,15 @@ export const ChannelsView: React.FC = () => {
         let mounted = true;
         const init = async () => {
             try {
+                // Optimization: Don't call API if key is obviously missing
+                if (!user?.settings?.youtubeApiKey && !process.env.YOUTUBE_API_KEY) {
+                    if (mounted) {
+                        setFeaturedError("YouTube API Key missing. Please configure it in Profile settings.");
+                        setLoadingFeatured(false);
+                    }
+                    return;
+                }
+
                 const feats = await getFeaturedVideos(user?.settings?.youtubeApiKey);
                 if (mounted) {
                     setFeaturedVideos(feats);
@@ -349,10 +358,10 @@ export const ChannelsView: React.FC = () => {
                     {featuredError && !activeChannelId && (
                         <div className="max-w-2xl mx-auto mt-10 p-6 bg-red-950/20 border border-red-900/50 rounded-2xl flex flex-col items-center text-center gap-3">
                             <AlertTriangle className="w-10 h-10 text-red-500" />
-                            <h3 className="text-lg font-bold text-red-400">YouTube API Error</h3>
+                            <h3 className="text-lg font-bold text-red-400">YouTube Configuration Required</h3>
                             <p className="text-sm text-zinc-400 max-w-md">{featuredError}</p>
                             <p className="text-xs text-zinc-500 mt-2">
-                                Tip: Go to <strong>Settings &gt; External API Keys</strong> and add your own YouTube Data API key to fix quota limits.
+                                Tip: Go to <strong>Settings &gt; External API Keys</strong> and add your own YouTube Data API key.
                             </p>
                             <button onClick={() => setViewMode('profile')} className="px-4 py-2 bg-red-900/30 hover:bg-red-900/50 text-white rounded-lg text-xs font-bold transition-colors">
                                 Open Settings

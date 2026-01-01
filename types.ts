@@ -170,7 +170,7 @@ export interface User {
   settings: UserSettings;
 }
 
-export type ViewMode = 'analyze' | 'review' | 'channels' | 'tracker' | 'strategy' | 'pricing' | 'profile' | 'tools' | 'trainer';
+export type ViewMode = 'analyze' | 'review' | 'channels' | 'tracker' | 'strategy' | 'pricing' | 'profile' | 'tools' | 'trainer' | 'solver';
 
 // Queue Types
 export type QueueStatus = 'pending' | 'processing' | 'completed' | 'error';
@@ -222,6 +222,37 @@ export interface Toast {
   title: string;
   description?: string;
   type: 'success' | 'error' | 'info';
+}
+
+// Solver Types
+export interface StrategyCell {
+    hand: string;
+    frequencies: {
+        fold: number; // 0-1
+        check: number;
+        call: number;
+        betSmall: number;
+        betLarge: number;
+        raise: number;
+    };
+    ev: number;
+}
+
+export interface SolverSolution {
+    street: 'Preflop' | 'Flop' | 'Turn' | 'River';
+    board: string[];
+    pot: number;
+    strategy: Record<string, StrategyCell>; // Key is hand "AKs"
+    exploitNote?: string;
+}
+
+export interface ExploitAdvice {
+    id: string;
+    villainStat: string; // e.g. "Fold to CBet 70%"
+    deviation: string; // e.g. "Over-bluff Flop"
+    confidence: number; // 0-100
+    action: 'Bet' | 'Check' | 'Fold' | 'Raise';
+    sizing?: string;
 }
 
 // Context Type Definition

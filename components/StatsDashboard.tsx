@@ -17,7 +17,7 @@ import {
 
 // --- Utility Components ---
 
-const CustomTooltip = ({ active, payload, label, formatter }: any) => {
+const CustomTooltip = ({ active, payload, label, formatter }: { active?: boolean; payload?: any[]; label?: string; formatter?: (value: number) => React.ReactNode }) => {
     if (active && payload && payload.length) {
         return (
             <div className="bg-[#09090b] border border-zinc-800 p-3 rounded-lg shadow-2xl backdrop-blur-md z-50">
@@ -27,7 +27,7 @@ const CustomTooltip = ({ active, payload, label, formatter }: any) => {
                         <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
                         <span className="text-zinc-300">{entry.name}:</span>
                         <span className="text-white font-mono font-bold">
-                            {formatter ? formatter(entry.value) : entry.value}
+                            {formatter ? formatter(Number(entry.value)) : entry.value}
                         </span>
                     </div>
                 ))}
@@ -206,7 +206,7 @@ const OverviewTab = ({ hands, stats, timeFilter, setTimeFilter }: any) => {
                                     tick={{fontSize: 10, fill: '#52525b'}} 
                                     axisLine={false} 
                                     tickLine={false} 
-                                    tickFormatter={(val) => `$${val}`}
+                                    tickFormatter={(val: number) => `$${val}`}
                                     width={40}
                                 />
                                 <Tooltip content={<CustomTooltip formatter={(val: number) => `$${val.toLocaleString()}`} />} />

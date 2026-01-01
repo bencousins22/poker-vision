@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Tool, Type, Part } from "@google/genai";
-import { AnalysisResult, AISettings, ChatMessage } from "../types";
+import { AnalysisResult, AISettings, ChatMessage, HandHistory } from "../types";
 
 // Helper to convert file to base64
 export const fileToGenerativePart = async (file: File): Promise<string> => {
@@ -197,10 +197,6 @@ export const analyzePokerVideo = async (
           progressCallback(`Encoding video for OpenRouter (Base64)...`);
           const base64Data = await fileToGenerativePart(videoFile);
           
-          // OpenRouter/OpenAI Compatible Multimodal Payload
-          // Note: Sending raw video as image_url data URI is the standard workaround for some proxies, 
-          // or sending as text content if the model supports it natively. 
-          // We will attempt the standard image_url format with the video mime type.
           messages.push({
               role: "user",
               content: [
@@ -282,6 +278,23 @@ export const getCoachChat = (systemContext: string, settings?: AISettings): Chat
 export const generateQueryFromNaturalLanguage = async (nlQuery: string, settings?: AISettings): Promise<string> => {
     const { provider, apiKey, model } = getActiveSettings(settings);
     const prompt = `Convert this natural language request into a specific SQL-like WHERE clause for poker hand filtering. Fields: win (number), hand (e.g. "AKs"), pos (string), pot (number), action (string). Input: "${nlQuery}". Output ONLY the raw string.`;
+
+    if (provider === 'google') {
+        const ai = new GoogleGenAI({ apiKey });
+        const response = await ai.models.generateContent({
+            model,
+            contents: [{ parts: [{ text: prompt }] }]
+        });
+        return response.text?.trim() || "";
+    } else {
+        const response = await callOpenRouter(apiKey, model, [{ role: "user", content: prompt }]);
+        return response.trim();
+    }
+};
+
+export const generatePlayerNote = async (hand: HandHistory, settings?: AISettings): Promise<string> => {
+    const { provider, apiKey, model } = getActiveSettings(settings);
+    const prompt = `Analyze this poker hand and write a concise player note about the Hero (${hand.hero}). Focus on tendencies, sizing tells, or leaks revealed in this specific hand. Keep it under 200 characters. Hand: ${hand.rawText}`;
 
     if (provider === 'google') {
         const ai = new GoogleGenAI({ apiKey });

@@ -40,7 +40,11 @@ const timeAgo = (dateString: string) => {
 };
 
 // Get effective API key
-const getKey = (userKey?: string) => userKey || DEFAULT_API_KEY;
+const getKey = (userKey?: string) => {
+    if (userKey && userKey.trim().length > 0) return userKey;
+    if (DEFAULT_API_KEY && DEFAULT_API_KEY.trim().length > 0) return DEFAULT_API_KEY;
+    return null;
+};
 
 export const searchChannels = async (query: string, userApiKey?: string): Promise<YouTubeChannel[]> => {
   const apiKey = getKey(userApiKey);
@@ -114,7 +118,6 @@ export const getChannelVideos = async (channelId: string, userApiKey?: string): 
   const data = await response.json();
   
   if (!data.items || data.items.length === 0) {
-      // Return empty instead of throwing if strictly no videos, but usually safe to return []
       return [];
   }
 
@@ -153,6 +156,10 @@ export const getChannelVideos = async (channelId: string, userApiKey?: string): 
 };
 
 export const getFeaturedVideos = async (userApiKey?: string): Promise<ChannelVideo[]> => {
+    // Check key before attempting parallel fetch to avoid double errors
+    const apiKey = getKey(userApiKey);
+    if (!apiKey) throw new Error("YouTube API Key missing. Please configure it in Profile settings.");
+
     // Fetch specifically from HCL and PokerGO as requested
     const [hcl, pokergo] = await Promise.allSettled([
         getChannelVideos(FEATURED_CHANNELS.HCL, userApiKey),
@@ -163,8 +170,12 @@ export const getFeaturedVideos = async (userApiKey?: string): Promise<ChannelVid
     const hclVideos = hcl.status === 'fulfilled' ? hcl.value : [];
     const pokergoVideos = pokergo.status === 'fulfilled' ? pokergo.value : [];
 
-    // If both failed, throw error (no mocks allowed per user request)
+    // If both failed, throw error
     if (hcl.status === 'rejected' && pokergo.status === 'rejected') {
+        const errorMsg = hcl.reason?.message || "Failed to load featured videos.";
+        if (errorMsg.includes("Key missing")) {
+             throw new Error("YouTube API Key missing. Please configure it in Profile settings.");
+        }
         throw new Error("Failed to load featured videos. Check API Key quota.");
     }
     
