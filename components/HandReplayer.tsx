@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { HandHistory, ReplayerPlayer, HandAction } from '../types';
 import { parseHandForReplay } from '../services/handReplayerParser';
-import { Play, Pause, SkipBack, SkipForward, ChevronLeft, ChevronRight, BrainCircuit, RotateCcw, FastForward, Rewind, Copy, Share2, Eye, EyeOff, Coins, Hash, Calculator, Edit, Save, X, Grid3X3, List, PieChart, TrendingUp, Activity, Scale, Maximize2, Minimize2 } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, ChevronLeft, ChevronRight, BrainCircuit, RotateCcw, FastForward, Rewind, Copy, Share2, Eye, EyeOff, Coins, Hash, Calculator, Edit, Save, X, Grid3X3, List, PieChart, TrendingUp, Activity, Scale, Maximize2, Minimize2, Settings2 } from 'lucide-react';
 import { usePoker } from '../App';
 import { getMatrixCell, DEFAULT_RANGES, calculateApproxEquity } from '../services/pokerLogic';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
@@ -23,13 +23,46 @@ const SUIT_ICONS: Record<string, string> = {
   'h': '♥', 'd': '♦', 'c': '♣', 's': '♠'
 };
 
+// 3D CSS Chip Stack Component
+const ChipStack: React.FC<{ amount: number; className?: string }> = ({ amount, className }) => {
+    // Determine chip color based on value (simplified)
+    let bg = 'bg-red-600';
+    let border = 'border-red-700';
+    let ring = 'border-red-400';
+    
+    if (amount >= 1000) { bg = 'bg-yellow-500'; border = 'border-yellow-600'; ring = 'border-yellow-200'; }
+    else if (amount >= 500) { bg = 'bg-purple-600'; border = 'border-purple-700'; ring = 'border-purple-300'; }
+    else if (amount >= 100) { bg = 'bg-black'; border = 'border-zinc-800'; ring = 'border-zinc-600'; }
+    else if (amount >= 25) { bg = 'bg-green-600'; border = 'border-green-700'; ring = 'border-green-400'; }
+
+    // Visual height of stack (max 5 chips)
+    const chips = Math.min(Math.max(1, Math.floor(Math.log10(amount || 1) * 2)), 6);
+
+    return (
+        <div className={`relative w-6 h-8 sm:w-8 sm:h-10 flex flex-col-reverse items-center ${className}`}>
+            {Array.from({ length: chips }).map((_, i) => (
+                <div 
+                    key={i} 
+                    className={`absolute w-full h-2.5 sm:h-3 rounded-[50%] ${bg} border-[0.5px] ${border} shadow-[0_1px_1px_rgba(0,0,0,0.5)] z-${i}`}
+                    style={{ bottom: `${i * 3}px` }}
+                >
+                    <div className={`absolute inset-[2px] rounded-[50%] border border-dashed ${ring} opacity-50`}></div>
+                </div>
+            ))}
+        </div>
+    );
+};
+
 const CardComponent: React.FC<{ cardString: string, small?: boolean, hidden?: boolean, className?: string }> = React.memo(({ cardString, small, hidden, className }) => {
   if (hidden) {
     return (
-        <div className={`${small ? 'w-8 h-11 rounded-[3px]' : 'w-14 h-20 sm:w-16 sm:h-24 rounded-md'} bg-gradient-to-br from-blue-900 to-blue-950 border border-blue-800/50 shadow-md relative overflow-hidden group ${className}`}>
-            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/diagmonds-light.png')] opacity-20"></div>
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-            <div className="absolute inset-0 ring-1 ring-inset ring-white/10 rounded-[inherit]"></div>
+        <div className={`${small ? 'w-10 h-14 rounded-sm' : 'w-16 h-24 sm:w-20 sm:h-28 rounded-md'} bg-zinc-900 border border-zinc-700 shadow-xl relative overflow-hidden group ${className}`}>
+            <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,transparent,transparent_5px,rgba(255,255,255,0.03)_5px,rgba(255,255,255,0.03)_10px)]"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-full border-2 border-zinc-700/50 flex items-center justify-center opacity-30">
+                    <Activity className="w-4 h-4 text-zinc-500" />
+                </div>
+            </div>
         </div>
     );
   }
@@ -41,33 +74,23 @@ const CardComponent: React.FC<{ cardString: string, small?: boolean, hidden?: bo
   const colorClass = SUIT_COLORS[suit] || 'text-zinc-200';
   
   return (
-    <div className={`${small ? 'w-8 h-11 text-[10px]' : 'w-14 h-20 sm:w-16 sm:h-24 text-lg sm:text-xl'} bg-zinc-100 rounded-md sm:rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.3)] flex flex-col items-center justify-center font-bold border border-zinc-300 select-none relative overflow-hidden transition-transform duration-200 hover:-translate-y-1 z-10 ${className}`}>
+    <div className={`${small ? 'w-10 h-14 text-sm' : 'w-16 h-24 sm:w-20 sm:h-28 text-2xl sm:text-3xl'} bg-[#e8e8e8] rounded-md sm:rounded-lg shadow-[0_4px_10px_rgba(0,0,0,0.4)] flex flex-col items-center justify-center font-black select-none relative overflow-hidden transition-transform duration-200 hover:-translate-y-2 z-10 ${className}`}>
       <span className={`absolute top-0.5 left-1 leading-none ${colorClass}`}>{rank}</span>
-      <span className={`text-xl sm:text-2xl ${small ? 'scale-75' : 'scale-100'} ${colorClass}`}>{SUIT_ICONS[suit]}</span>
+      <span className={`${small ? 'text-xl' : 'text-4xl'} ${colorClass} drop-shadow-sm`}>{SUIT_ICONS[suit]}</span>
       <span className={`absolute bottom-0.5 right-1 leading-none rotate-180 ${colorClass}`}>{rank}</span>
     </div>
   );
 });
 
 const DealerButton: React.FC = () => (
-    <div className="w-5 h-5 sm:w-6 sm:h-6 bg-white rounded-full flex items-center justify-center shadow-md border border-zinc-200 z-20">
-        <span className="text-[10px] font-black text-black">D</span>
+    <div className="w-6 h-6 sm:w-8 sm:h-8 bg-white rounded-full flex items-center justify-center shadow-[0_2px_5px_rgba(0,0,0,0.3)] border-2 border-zinc-200 z-20">
+        <span className="text-[10px] sm:text-xs font-black text-black">D</span>
     </div>
 );
 
-const ChipStack: React.FC<{ amount: number }> = ({ amount }) => {
-    return (
-        <div className="flex flex-col items-center -space-y-1 drop-shadow-md filter">
-             <div className="w-4 h-1.5 sm:w-5 sm:h-2 bg-red-600 rounded-[50%] border border-red-800 ring-[0.5px] ring-white/10"></div>
-             <div className="w-4 h-1.5 sm:w-5 sm:h-2 bg-red-600 rounded-[50%] border border-red-800 ring-[0.5px] ring-white/10"></div>
-             <div className="w-4 h-1.5 sm:w-5 sm:h-2 bg-red-600 rounded-[50%] border border-red-800 ring-[0.5px] ring-white/10"></div>
-        </div>
-    );
-};
-
 const MiniRangeGrid: React.FC<{ selectedHands: string[], color?: string }> = React.memo(({ selectedHands, color = '#10b981' }) => {
     return (
-        <div className="grid grid-cols-13 gap-[1px] bg-zinc-900 border border-zinc-800 p-[1px] w-32 h-32">
+        <div className="grid grid-cols-13 gap-[1px] bg-zinc-950 border border-zinc-800 p-[1px] w-32 h-32 shadow-xl">
              {Array.from({ length: 13 }).map((_, r) => (
                 Array.from({ length: 13 }).map((_, c) => {
                     const hand = getMatrixCell(r, c);
@@ -75,7 +98,7 @@ const MiniRangeGrid: React.FC<{ selectedHands: string[], color?: string }> = Rea
                     return (
                         <div 
                             key={hand}
-                            className={`w-full h-full ${active ? '' : 'bg-zinc-950 opacity-20'}`}
+                            className={`w-full h-full ${active ? '' : 'bg-zinc-900/50'}`}
                             style={{ backgroundColor: active ? color : undefined }}
                         />
                     );
@@ -97,11 +120,10 @@ export const HandReplayer: React.FC<Props> = ({ hand, onAnalyzeSpot }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedText, setEditedText] = useState(hand.rawText);
   const [showLog, setShowLog] = useState(false);
-  const [showEquity, setShowEquity] = useState(true); // Default to true but in control deck
+  const [showEquity, setShowEquity] = useState(true); 
   
-  // Range Assignment State
-  const [assignedRanges, setAssignedRanges] = useState<Record<string, string>>({}); // playerName -> rangeId
-  const [showRangeSelector, setShowRangeSelector] = useState<string | null>(null); // playerName
+  const [assignedRanges, setAssignedRanges] = useState<Record<string, string>>({}); 
+  const [showRangeSelector, setShowRangeSelector] = useState<string | null>(null);
 
   const logContainerRef = useRef<HTMLDivElement>(null);
 
@@ -124,7 +146,6 @@ export const HandReplayer: React.FC<Props> = ({ hand, onAnalyzeSpot }) => {
       return () => window.removeEventListener('keydown', handleKeyDown);
   }, [timeline.length, isEditing]);
 
-  // Scroll log
   useEffect(() => {
       if (showLog && logContainerRef.current) {
           const activeItem = logContainerRef.current.children[actionIndex] as HTMLElement;
@@ -134,7 +155,6 @@ export const HandReplayer: React.FC<Props> = ({ hand, onAnalyzeSpot }) => {
       }
   }, [actionIndex, showLog]);
 
-  // State builder
   const currentState = useMemo(() => {
     const players = JSON.parse(JSON.stringify(initialPlayers)) as ReplayerPlayer[];
     let pot = 0;
@@ -216,7 +236,6 @@ export const HandReplayer: React.FC<Props> = ({ hand, onAnalyzeSpot }) => {
     return { players, pot, board, street, lastActionDesc, lastActivePlayer, currentBet, heroFacingBet };
   }, [initialPlayers, timeline, actionIndex]);
 
-  // Reactive Equity Timeline
   const equityTimeline = useMemo(() => {
       const hero = initialPlayers.find(p => p.cards && p.cards.length === 2);
       if (!hero) return [];
@@ -270,7 +289,6 @@ export const HandReplayer: React.FC<Props> = ({ hand, onAnalyzeSpot }) => {
       return dataPoints;
   }, [initialPlayers, timeline, assignedRanges, user?.settings?.savedRanges]);
 
-  // Real-time Equity
   const liveEquity = useMemo(() => {
       const hero = currentState.players.find(p => p.cards && p.cards.length === 2 && p.isActive);
       if (!hero) return null;
@@ -350,19 +368,6 @@ export const HandReplayer: React.FC<Props> = ({ hand, onAnalyzeSpot }) => {
     onAnalyzeSpot(context);
   };
 
-  const handleCalcEquity = () => {
-      const activePlayers = currentState.players.filter(p => p.isActive);
-      const hero = activePlayers.find(p => p.cards && p.cards.length > 0) || activePlayers[0];
-      const villain = activePlayers.find(p => p.name !== hero?.name && p.isActive) || activePlayers[1];
-      
-      setLabContext({
-          heroHand: hero?.cards || [],
-          villainHand: villain?.cards || [], 
-          board: currentState.board
-      });
-      setViewMode('tools');
-  };
-
   const handleSaveEdit = () => {
       updateHand(hand.id, { rawText: editedText });
       setIsEditing(false);
@@ -370,16 +375,12 @@ export const HandReplayer: React.FC<Props> = ({ hand, onAnalyzeSpot }) => {
       setActionIndex(0);
   };
 
-  // Improved Player Positioning Logic
   const getSeatStyle = (seatIdx: number) => {
      const totalSeats = 9;
-     // Rotate to put Seat 1 at roughly bottom right or similar standard
      const offset = Math.PI / 2; 
      const angle = ((seatIdx - 1) / totalSeats) * 2 * Math.PI + offset; 
-     // Widen the X radius to use more width
-     const x = 50 + 42 * Math.cos(angle); 
-     // Keep Y radius moderate to avoid top/bottom cutoff
-     const y = 48 + 38 * Math.sin(angle); 
+     const x = 50 + 40 * Math.cos(angle); 
+     const y = 48 + 36 * Math.sin(angle); 
      return { left: `${x}%`, top: `${y}%` };
   };
   
@@ -435,53 +436,56 @@ export const HandReplayer: React.FC<Props> = ({ hand, onAnalyzeSpot }) => {
 
   return (
     <div className="flex flex-col w-full h-full select-none" onClick={() => setShowRangeSelector(null)}>
-      {/* Felt Area */}
-      <div className="relative flex-1 min-h-[300px] bg-[#1a1a1a] rounded-t-3xl border-x-[10px] border-t-[10px] border-zinc-800 shadow-inner overflow-hidden group">
+      {/* Immersive Felt Area */}
+      <div className="relative flex-1 min-h-[300px] bg-[#1a1a1a] rounded-t-3xl border-x-[10px] border-t-[10px] border-[#18181b] shadow-inner overflow-hidden group">
         
-        {/* Felt Texture */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-emerald-900 via-emerald-950 to-black">
-           <div className="absolute inset-0 opacity-[0.03] bg-[url('https://www.transparenttextures.com/patterns/felt.png')] mix-blend-overlay"></div>
+        {/* Advanced Felt Texture */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-emerald-800 via-emerald-950 to-[#022c22]">
+           {/* Fabric Noise */}
+           <div className="absolute inset-0 opacity-[0.05] bg-[url('https://www.transparenttextures.com/patterns/felt.png')] mix-blend-overlay"></div>
            {/* Table Ring */}
-           <div className="absolute inset-[20px] rounded-[100px] border-[12px] border-emerald-800/20 shadow-[inset_0_0_60px_rgba(0,0,0,0.5)]"></div>
+           <div className="absolute inset-[30px] rounded-[150px] border-[2px] border-emerald-500/10 shadow-[inset_0_0_100px_rgba(0,0,0,0.8)]"></div>
            
-           {/* Center Logo */}
-           <div className="absolute inset-0 flex flex-col items-center justify-center opacity-5 pointer-events-none select-none">
-                <span className="text-4xl sm:text-6xl font-black text-white tracking-[0.2em]">HUSTLER</span>
-                <span className="text-xl sm:text-3xl font-bold text-poker-gold tracking-[0.3em] mt-2">CASINO LIVE</span>
+           {/* Center Logo / Branding */}
+           <div className="absolute inset-0 flex flex-col items-center justify-center opacity-10 pointer-events-none select-none transform skew-x-12">
+                <span className="text-6xl sm:text-8xl font-black text-white tracking-[0.2em] blur-[1px]">VISION</span>
+                <span className="text-2xl sm:text-4xl font-bold text-poker-gold tracking-[0.5em] mt-2">REPLAYER</span>
            </div>
            
-           {/* Community Cards - Centered */}
-           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex gap-2 sm:gap-3 z-10 perspective-[1000px]">
+           {/* Community Cards - Centered & Elevated */}
+           <div className="absolute top-[45%] left-1/2 -translate-x-1/2 -translate-y-1/2 flex gap-2 sm:gap-3 z-20 perspective-[1000px]">
                 {currentState.board.map((card, i) => (
-                    <div key={i} className="animate-in zoom-in slide-in-from-top-4 duration-500 shadow-2xl hover:-translate-y-2 transition-transform">
+                    <div key={i} className="animate-in zoom-in slide-in-from-top-4 duration-500 shadow-[0_20px_50px_rgba(0,0,0,0.5)] hover:-translate-y-4 transition-transform duration-300">
                         <CardComponent cardString={card} />
                     </div>
                 ))}
                 {Array(5 - currentState.board.length).fill(0).map((_, i) => (
-                    <div key={`empty-${i}`} className="w-14 h-20 sm:w-16 sm:h-24 rounded-md border-2 border-dashed border-white/10 bg-black/10 backdrop-blur-sm" />
+                    <div key={`empty-${i}`} className="w-16 h-24 sm:w-20 sm:h-28 rounded-md border-2 border-dashed border-emerald-500/20 bg-black/10 backdrop-blur-sm" />
                 ))}
            </div>
 
-           {/* Pot Display - Moved Up */}
-           <div className="absolute top-[28%] sm:top-[30%] left-1/2 -translate-x-1/2 text-center z-10 w-full pointer-events-none">
-                <div className="text-[9px] sm:text-[10px] uppercase font-bold text-poker-gold/60 mb-1 tracking-[0.2em] drop-shadow-md">Total Pot</div>
-                <div className="inline-flex bg-black/80 backdrop-blur-md px-4 sm:px-6 py-1.5 sm:py-2 rounded-full text-white font-mono text-lg sm:text-xl border border-poker-gold/30 shadow-[0_0_20px_rgba(251,191,36,0.1)] items-center gap-2">
-                    <span className="text-poker-gold">$</span>
-                    {currentState.players.reduce((acc, p) => acc + p.bet, currentState.pot).toLocaleString()}
+           {/* Pot Display - Enhanced */}
+           <div className="absolute top-[25%] left-1/2 -translate-x-1/2 text-center z-10 w-full pointer-events-none">
+                <div className="inline-flex flex-col items-center bg-black/40 backdrop-blur-xl px-6 py-2 rounded-2xl border border-white/5 shadow-2xl">
+                    <div className="text-[9px] uppercase font-bold text-zinc-400 tracking-[0.2em] mb-0.5">Total Pot</div>
+                    <div className="text-poker-gold font-mono text-2xl font-bold tracking-tight text-shadow-glow">
+                        ${currentState.players.reduce((acc, p) => acc + p.bet, currentState.pot).toLocaleString()}
+                    </div>
                 </div>
                 {currentState.currentBet > 0 && (
-                    <div className="mt-2 text-[9px] text-zinc-400 bg-black/50 px-3 py-1 rounded-full border border-white/5 inline-block backdrop-blur-sm animate-in fade-in zoom-in">
-                        Pot Odds: {((currentState.currentBet / (currentState.pot + currentState.players.reduce((acc,p)=>acc+p.bet,0) + currentState.currentBet)) * 100).toFixed(1)}%
+                    <div className="mt-3 inline-flex items-center gap-1.5 bg-black/60 px-3 py-1 rounded-full border border-white/10 backdrop-blur-md animate-in fade-in zoom-in text-[10px]">
+                        <span className="text-zinc-400">Odds:</span>
+                        <span className="text-white font-bold">{((currentState.currentBet / (currentState.pot + currentState.players.reduce((acc,p)=>acc+p.bet,0) + currentState.currentBet)) * 100).toFixed(1)}%</span>
                     </div>
                 )}
            </div>
         </div>
 
         {/* Action Log Drawer */}
-        <div className={`absolute top-4 right-4 bottom-4 w-60 bg-zinc-950/90 backdrop-blur-md border border-zinc-800 rounded-2xl z-50 transform transition-transform duration-300 flex flex-col shadow-2xl ${showLog ? 'translate-x-0' : 'translate-x-[120%]'}`}>
-            <div className="p-3 border-b border-zinc-800 flex justify-between items-center">
+        <div className={`absolute top-4 right-4 bottom-4 w-60 bg-black/90 backdrop-blur-xl border border-white/10 rounded-2xl z-50 transform transition-transform duration-300 flex flex-col shadow-2xl ${showLog ? 'translate-x-0' : 'translate-x-[120%]'}`}>
+            <div className="p-3 border-b border-white/10 flex justify-between items-center bg-white/5">
                 <h3 className="text-[10px] font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                    <List className="w-3.5 h-3.5" /> Action Log
+                    <List className="w-3.5 h-3.5 text-poker-gold" /> Hand History
                 </h3>
                 <button onClick={() => setShowLog(false)} className="text-zinc-500 hover:text-white"><X className="w-4 h-4" /></button>
             </div>
@@ -490,23 +494,23 @@ export const HandReplayer: React.FC<Props> = ({ hand, onAnalyzeSpot }) => {
                     <div 
                         key={idx}
                         onClick={() => setActionIndex(idx)}
-                        className={`p-2 rounded text-[10px] cursor-pointer transition-colors border-l-2 ${
+                        className={`p-2 rounded-lg text-[10px] cursor-pointer transition-all border-l-2 ${
                             idx === actionIndex 
-                            ? 'bg-zinc-800 border-poker-gold text-white' 
-                            : 'border-transparent text-zinc-400 hover:bg-zinc-800/50'
+                            ? 'bg-zinc-800 border-poker-gold text-white shadow-md pl-3' 
+                            : 'border-transparent text-zinc-400 hover:bg-white/5 pl-2'
                         }`}
                     >
                         {item.type === 'street' ? (
-                            <div className="font-bold text-center text-zinc-500 py-1 border-y border-zinc-800/50 my-1 bg-zinc-900/50">{item.street}</div>
+                            <div className="font-black text-center text-zinc-500 py-1 uppercase tracking-widest text-[9px] bg-white/5 rounded my-1">{item.street}</div>
                         ) : (
                             <div className="flex justify-between items-center">
                                 <span className="font-bold truncate max-w-[80px]">{item.player}</span>
-                                <span className={
+                                <span className={`font-mono font-bold ${
                                     item.actionType === 'fold' ? 'text-zinc-600' :
                                     item.actionType === 'raise' ? 'text-red-400' :
                                     item.actionType === 'bet' ? 'text-amber-400' :
                                     item.actionType === 'call' ? 'text-blue-400' : 'text-zinc-300'
-                                }>{item.desc.replace(item.player + ': ', '')}</span>
+                                }`}>{item.desc.replace(item.player + ': ', '')}</span>
                             </div>
                         )}
                     </div>
@@ -514,28 +518,31 @@ export const HandReplayer: React.FC<Props> = ({ hand, onAnalyzeSpot }) => {
             </div>
         </div>
 
-        {/* Decision Assistant (Top Left) */}
+        {/* Decision Assistant Overlay */}
         {potOddsData && (
-            <div className="absolute top-4 left-4 bg-black/80 backdrop-blur-md border border-zinc-700 rounded-xl p-3 z-40 shadow-2xl animate-in fade-in slide-in-from-left-4 max-w-[180px]">
-                <div className="flex items-center gap-2 mb-2 border-b border-white/10 pb-1">
-                    <Scale className="w-3.5 h-3.5 text-poker-gold" />
-                    <span className="text-[10px] font-bold text-white uppercase tracking-widest">Decision</span>
+            <div className="absolute top-4 left-4 bg-black/90 backdrop-blur-xl border border-white/10 rounded-2xl p-4 z-40 shadow-2xl animate-in fade-in slide-in-from-left-4 max-w-[200px]">
+                <div className="flex items-center gap-2 mb-3 border-b border-white/10 pb-2">
+                    <Scale className="w-4 h-4 text-poker-gold" />
+                    <span className="text-xs font-black text-white uppercase tracking-widest">Math</span>
                 </div>
-                <div className="space-y-1.5">
-                    <div className="flex justify-between items-center text-[10px]">
-                        <span className="text-zinc-400 font-bold">Pot Odds</span>
+                <div className="space-y-2">
+                    <div className="flex justify-between items-center text-xs">
+                        <span className="text-zinc-500 font-bold">Pot Odds</span>
                         <span className="font-mono text-white">{potOddsData.potOdds.toFixed(1)}%</span>
                     </div>
-                    <div className="flex justify-between items-center text-[10px]">
-                        <span className="text-zinc-400 font-bold">Equity</span>
+                    <div className="flex justify-between items-center text-xs">
+                        <span className="text-zinc-500 font-bold">Equity</span>
                         <span className={`font-mono font-bold ${potOddsData.isProfitable ? 'text-poker-green' : 'text-red-500'}`}>
                             {potOddsData.equity.toFixed(1)}%
                         </span>
                     </div>
-                    <div className={`mt-1 p-1 rounded text-center text-[9px] font-black uppercase tracking-wider border ${
-                        potOddsData.isProfitable ? 'bg-poker-green/20 text-poker-green border-poker-green/30' : 'bg-red-500/20 text-red-500 border-red-500/30'
+                    <div className={`mt-2 p-1.5 rounded-lg text-center text-[10px] font-black uppercase tracking-wider border flex items-center justify-center gap-2 ${
+                        potOddsData.isProfitable ? 'bg-emerald-950/50 text-emerald-400 border-emerald-900' : 'bg-red-950/50 text-red-400 border-red-900'
                     }`}>
-                        {potOddsData.isProfitable ? 'Call (+EV)' : 'Fold (-EV)'}
+                        {potOddsData.isProfitable ? 'Call' : 'Fold'} 
+                        <span className="opacity-50 font-normal normal-case">
+                            ({potOddsData.isProfitable ? '+' : ''}{(potOddsData.equity - potOddsData.potOdds).toFixed(1)}% Diff)
+                        </span>
                     </div>
                 </div>
             </div>
@@ -545,19 +552,22 @@ export const HandReplayer: React.FC<Props> = ({ hand, onAnalyzeSpot }) => {
         {currentState.players.map((player) => (
             <React.Fragment key={player.seat}>
                 {player.isDealer && (
-                    <div className="absolute transition-all duration-700 ease-in-out" style={getButtonPosition(player.seat)}>
+                    <div className="absolute transition-all duration-700 ease-in-out z-20" style={getButtonPosition(player.seat)}>
                         <DealerButton />
                     </div>
                 )}
 
                 <div 
-                    className={`absolute transition-all duration-500 w-24 h-24 sm:w-28 sm:h-28 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center z-30 ${!player.isActive ? 'opacity-40 grayscale blur-[1px]' : ''}`}
+                    className={`absolute transition-all duration-500 w-28 h-28 sm:w-32 sm:h-32 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center z-30 ${!player.isActive ? 'opacity-40 grayscale blur-[1px]' : ''}`}
                     style={getSeatStyle(player.seat)}
                 >
                     {/* Range Selector */}
                     {showRangeSelector === player.name && (
-                        <div className="absolute bottom-full mb-2 bg-zinc-950 border border-zinc-800 rounded-xl p-2 z-[100] shadow-2xl w-48 animate-in slide-in-from-bottom-2" onClick={(e) => e.stopPropagation()}>
-                            <div className="text-[10px] font-bold text-zinc-500 mb-2 px-2 uppercase tracking-wide">Assign Range</div>
+                        <div className="absolute bottom-full mb-2 bg-black border border-zinc-800 rounded-xl p-2 z-[100] shadow-2xl w-48 animate-in slide-in-from-bottom-2" onClick={(e) => e.stopPropagation()}>
+                            <div className="text-[9px] font-bold text-zinc-500 mb-2 px-2 uppercase tracking-wide flex justify-between items-center">
+                                <span>Assign Range</span>
+                                <X className="w-3 h-3 cursor-pointer hover:text-white" onClick={() => setShowRangeSelector(null)} />
+                            </div>
                             <div className="max-h-32 overflow-y-auto space-y-1 scrollbar-thin scrollbar-thumb-zinc-800">
                                 {allRanges.map(r => (
                                     <button 
@@ -575,9 +585,9 @@ export const HandReplayer: React.FC<Props> = ({ hand, onAnalyzeSpot }) => {
 
                     <button 
                         onClick={(e) => { e.stopPropagation(); setShowRangeSelector(player.name === showRangeSelector ? null : player.name); }}
-                        className="absolute -right-2 top-0 bg-zinc-900 border border-zinc-700 p-1 rounded-full text-zinc-400 hover:text-white hover:border-poker-gold transition-colors z-40 shadow-lg group/range"
+                        className="absolute -right-2 top-0 bg-zinc-900 border border-zinc-700 p-1.5 rounded-full text-zinc-400 hover:text-white hover:border-poker-gold transition-colors z-40 shadow-lg group/range"
                     >
-                        <Grid3X3 className="w-2.5 h-2.5" />
+                        <Grid3X3 className="w-3 h-3" />
                         {assignedRanges[player.name] && (
                             <div className="absolute left-full ml-2 top-0 bg-zinc-950 p-2 rounded-lg border border-zinc-800 shadow-xl opacity-0 group-hover/range:opacity-100 pointer-events-none transition-opacity z-50">
                                 <div className="text-[9px] font-bold text-zinc-400 mb-1 whitespace-nowrap">{allRanges.find(r => r.id === assignedRanges[player.name])?.name}</div>
@@ -590,44 +600,44 @@ export const HandReplayer: React.FC<Props> = ({ hand, onAnalyzeSpot }) => {
                     </button>
 
                     {/* Action Bubble */}
-                    <div className={`absolute -top-10 transition-all duration-300 z-50 ${player.action ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-4 scale-90'}`}>
-                        <div className={`px-3 py-1.5 rounded-lg text-[10px] font-black shadow-lg whitespace-nowrap border ${
-                            player.action?.includes('Fold') ? 'bg-zinc-800 text-zinc-400 border-zinc-700' :
-                            player.action?.includes('Raise') ? 'bg-gradient-to-r from-red-900 to-red-800 text-white border-red-700' :
-                            player.action?.includes('Bet') ? 'bg-gradient-to-r from-amber-600 to-yellow-600 text-white border-amber-500' :
-                            player.action?.includes('Win') ? 'bg-gradient-to-r from-emerald-600 to-green-600 text-white scale-110 border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.4)]' :
+                    <div className={`absolute -top-12 transition-all duration-300 z-50 ${player.action ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-4 scale-90'}`}>
+                        <div className={`px-3 py-1.5 rounded-full text-[10px] font-black shadow-xl whitespace-nowrap border backdrop-blur-md ${
+                            player.action?.includes('Fold') ? 'bg-zinc-900/90 text-zinc-400 border-zinc-700' :
+                            player.action?.includes('Raise') ? 'bg-red-950/90 text-red-400 border-red-500/50' :
+                            player.action?.includes('Bet') ? 'bg-amber-950/90 text-amber-400 border-amber-500/50' :
+                            player.action?.includes('Win') ? 'bg-emerald-950/90 text-emerald-400 scale-110 border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.4)]' :
                             'bg-white text-black border-white'
                         }`}>
                             {player.action}
                         </div>
                     </div>
 
-                    {/* Avatar */}
-                    <div className={`relative w-12 h-12 sm:w-14 sm:h-14 rounded-full border-2 shadow-[0_5px_25px_rgba(0,0,0,0.8)] transition-all duration-300 ${
-                        player.name === currentState.lastActivePlayer ? 'border-poker-gold scale-110 shadow-[0_0_30px_rgba(251,191,36,0.4)]' : 
-                        player.isActive ? 'border-zinc-600 bg-zinc-800' : 'border-zinc-800 bg-zinc-900'
-                    } flex items-center justify-center overflow-hidden bg-zinc-900`}>
-                        <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent"></div>
-                        <span className="relative text-xs sm:text-sm font-black text-zinc-400 z-10">{player.name.substring(0, 2).toUpperCase()}</span>
+                    {/* Avatar Circle */}
+                    <div className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-full border-[3px] shadow-2xl transition-all duration-300 ${
+                        player.name === currentState.lastActivePlayer ? 'border-poker-gold scale-110 shadow-[0_0_30px_rgba(251,191,36,0.3)]' : 
+                        player.isActive ? 'border-zinc-700 bg-zinc-800' : 'border-zinc-800 bg-zinc-900'
+                    } flex items-center justify-center overflow-hidden bg-zinc-900 z-20`}>
+                        <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-black"></div>
+                        <span className="relative text-xs sm:text-sm font-black text-zinc-500 z-10 select-none">{player.name.substring(0, 2).toUpperCase()}</span>
                     </div>
 
                     {/* Name Plate */}
                     <div 
-                        className="mt-[-10px] bg-zinc-950/90 border border-zinc-700 rounded-[4px] px-2 py-1 text-center min-w-[80px] shadow-xl z-40 relative transition-opacity duration-300 backdrop-blur-md"
+                        className="mt-[-12px] bg-black/80 border border-white/10 rounded-lg px-2 py-1 text-center min-w-[85px] shadow-xl z-30 relative transition-opacity duration-300 backdrop-blur-md"
                         style={{ opacity: hudOpacity }}
                         onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
                         onMouseLeave={(e) => e.currentTarget.style.opacity = String(hudOpacity)}
                     >
-                        <div className="text-[9px] font-bold text-zinc-300 truncate max-w-[75px] leading-tight">{player.name}</div>
-                        <div className="text-[9px] font-mono text-poker-emerald leading-tight tracking-tight">{formatAmt(player.currentStack)}</div>
+                        <div className="text-[10px] font-bold text-white truncate max-w-[80px] leading-tight">{player.name}</div>
+                        <div className="text-[9px] font-mono text-poker-emerald leading-tight tracking-tight font-bold">{formatAmt(player.currentStack)}</div>
                     </div>
 
                     {/* Hole Cards */}
                     {player.isActive && (
-                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 flex -space-x-4 sm:-space-x-6 hover:space-x-1 transition-all z-10 perspective-[500px]">
+                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex -space-x-5 sm:-space-x-7 hover:space-x-1 transition-all z-10 perspective-[500px]">
                             {player.cards && player.cards.length > 0 ? (
                                 player.cards.map((c, i) => (
-                                    <div key={i} className="transform rotate-y-12 hover:rotate-0 transition-transform duration-300 origin-bottom-left shadow-2xl">
+                                    <div key={i} className="transform rotate-y-6 hover:rotate-0 transition-transform duration-300 origin-bottom-left shadow-[0_10px_20px_rgba(0,0,0,0.5)]">
                                         <CardComponent cardString={c} small />
                                     </div>
                                 ))
@@ -642,9 +652,9 @@ export const HandReplayer: React.FC<Props> = ({ hand, onAnalyzeSpot }) => {
                     
                     {/* Bet Chips */}
                     {player.bet > 0 && (
-                        <div className="absolute top-20 flex flex-col items-center animate-in slide-in-from-top-4 fade-in duration-300 z-20">
+                        <div className="absolute top-24 flex flex-col items-center animate-in slide-in-from-top-4 fade-in duration-300 z-20">
                             <ChipStack amount={player.bet} />
-                            <span className="mt-0.5 text-[8px] font-mono font-bold text-white bg-black/70 px-1.5 py-0.5 rounded border border-zinc-600 shadow-lg backdrop-blur-md">{formatAmt(player.bet)}</span>
+                            <span className="mt-1 text-[8px] font-mono font-bold text-white bg-black/60 px-1.5 py-0.5 rounded border border-white/10 shadow-lg backdrop-blur-sm">{formatAmt(player.bet)}</span>
                         </div>
                     )}
                 </div>
@@ -652,13 +662,13 @@ export const HandReplayer: React.FC<Props> = ({ hand, onAnalyzeSpot }) => {
         ))}
       </div>
 
-      {/* Control Deck (Expanded with Equity Graph) */}
-      <div className="bg-[#111] border-x-[10px] border-b-[10px] border-zinc-800 rounded-b-3xl shadow-xl flex flex-col">
-         {/* Equity Graph Section (Collapsible) */}
+      {/* Control Deck */}
+      <div className="bg-[#09090b] border-x-[10px] border-b-[10px] border-[#18181b] rounded-b-3xl shadow-xl flex flex-col">
+         {/* Equity Graph Section */}
          {showEquity && (
-             <div className="h-24 bg-zinc-900/50 border-b border-zinc-800/50 relative flex items-center px-4">
+             <div className="h-24 bg-black/40 border-b border-zinc-800 relative flex items-center px-4">
                  <div className="absolute left-4 top-2 text-[10px] font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1">
-                     <TrendingUp className="w-3 h-3" /> Hero Equity
+                     <TrendingUp className="w-3 h-3" /> Equity
                  </div>
                  <div className="flex-1 h-16 mt-2 ml-4">
                     <ResponsiveContainer width="100%" height="100%">
@@ -698,18 +708,18 @@ export const HandReplayer: React.FC<Props> = ({ hand, onAnalyzeSpot }) => {
                  {liveEquity && (
                      <div className="ml-4 flex flex-col items-center">
                          <span className="text-2xl font-black text-poker-green">{liveEquity.hero.toFixed(0)}%</span>
-                         <span className="text-[9px] text-zinc-500">Current</span>
+                         <span className="text-[9px] text-zinc-500">Win Rate</span>
                      </div>
                  )}
              </div>
          )}
 
-         {/* Playback Controls */}
+         {/* Controls */}
          <div className="p-4 flex flex-col gap-4">
              {/* Timeline Bar */}
              <div className="flex items-center gap-3 text-xs">
                 <span className="w-16 text-right font-mono text-poker-gold font-bold">{currentState.street}</span>
-                <div className="relative flex-1 h-1.5 bg-zinc-800 rounded-full cursor-pointer group hover:h-2.5 transition-all" onClick={(e) => {
+                <div className="relative flex-1 h-2 bg-zinc-800 rounded-full cursor-pointer group transition-all" onClick={(e) => {
                     const rect = e.currentTarget.getBoundingClientRect();
                     const pct = (e.clientX - rect.left) / rect.width;
                     setActionIndex(Math.floor(pct * timeline.length));
@@ -717,33 +727,33 @@ export const HandReplayer: React.FC<Props> = ({ hand, onAnalyzeSpot }) => {
                     {timeline.map((t, i) => t.type === 'street' ? (
                         <div key={i} className="absolute top-0 w-0.5 h-full bg-white/20 z-10" style={{ left: `${((i)/timeline.length)*100}%` }}></div>
                     ) : null)}
-                    <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-poker-gold to-yellow-600 rounded-full" style={{ width: `${((actionIndex + 1) / timeline.length) * 100}%` }}></div>
+                    <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-poker-gold to-yellow-600 rounded-full shadow-[0_0_10px_rgba(251,191,36,0.5)] transition-all duration-100" style={{ width: `${((actionIndex + 1) / timeline.length) * 100}%` }}></div>
                 </div>
                 <span className="w-16 font-mono text-zinc-500">{actionIndex + 1}/{timeline.length}</span>
              </div>
 
              <div className="flex flex-wrap items-center justify-between gap-4">
-                 <div className="flex items-center gap-1 bg-zinc-900 p-1 rounded-xl">
+                 <div className="flex items-center gap-1 bg-zinc-900 p-1 rounded-xl border border-zinc-800">
                      {['Preflop', 'Flop', 'Turn', 'River'].map(st => (
                          <button key={st} onClick={() => jumpToStreet(st)} className="px-3 py-1.5 text-[10px] hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-lg transition-colors font-bold uppercase tracking-wide">{st.charAt(0)}</button>
                      ))}
                  </div>
 
-                 <div className="flex items-center gap-2">
-                     <button onClick={() => setActionIndex(0)} className="p-2 text-zinc-400 hover:text-white"><RotateCcw className="w-4 h-4" /></button>
-                     <button onClick={() => setActionIndex(Math.max(0, actionIndex - 1))} className="p-2 text-zinc-400 hover:text-white"><ChevronLeft className="w-5 h-5" /></button>
+                 <div className="flex items-center gap-3">
+                     <button onClick={() => setActionIndex(0)} className="text-zinc-500 hover:text-white transition-colors"><RotateCcw className="w-4 h-4" /></button>
+                     <button onClick={() => setActionIndex(Math.max(0, actionIndex - 1))} className="text-zinc-400 hover:text-white transition-colors"><ChevronLeft className="w-6 h-6" /></button>
                      <button 
                         onClick={() => setIsPlaying(!isPlaying)}
-                        className={`w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-105 active:scale-95 ${isPlaying ? 'bg-zinc-800 text-white' : 'bg-white text-black'}`}
+                        className={`w-12 h-12 rounded-full flex items-center justify-center transition-all hover:scale-105 active:scale-95 shadow-lg ${isPlaying ? 'bg-zinc-800 text-white' : 'bg-white text-black'}`}
                      >
-                        {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
+                        {isPlaying ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current ml-0.5" />}
                      </button>
-                     <button onClick={() => setActionIndex(Math.min(timeline.length - 1, actionIndex + 1))} className="p-2 text-zinc-400 hover:text-white"><ChevronRight className="w-5 h-5" /></button>
-                     <button onClick={() => setActionIndex(timeline.length - 1)} className="p-2 text-zinc-400 hover:text-white"><FastForward className="w-4 h-4" /></button>
+                     <button onClick={() => setActionIndex(Math.min(timeline.length - 1, actionIndex + 1))} className="text-zinc-400 hover:text-white transition-colors"><ChevronRight className="w-6 h-6" /></button>
+                     <button onClick={() => setActionIndex(timeline.length - 1)} className="text-zinc-500 hover:text-white transition-colors"><FastForward className="w-4 h-4" /></button>
                  </div>
 
                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1 bg-zinc-900 rounded-lg p-1">
+                    <div className="flex items-center gap-1 bg-zinc-900 rounded-lg p-1 border border-zinc-800">
                         <button onClick={() => setShowLog(!showLog)} className={`p-1.5 rounded hover:bg-zinc-800 transition-colors ${showLog ? 'text-white bg-zinc-800' : 'text-zinc-400'}`} title="Log">
                             <List className="w-4 h-4" />
                         </button>
@@ -757,8 +767,8 @@ export const HandReplayer: React.FC<Props> = ({ hand, onAnalyzeSpot }) => {
                     </div>
 
                     <div className="flex gap-2">
-                        <button onClick={() => setIsEditing(true)} className="p-2 bg-zinc-900 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-white"><Edit className="w-4 h-4" /></button>
-                        <button onClick={handleAnalyze} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg transition-all shadow-lg">
+                        <button onClick={() => setIsEditing(true)} className="p-2 bg-zinc-900 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-white border border-zinc-800"><Edit className="w-4 h-4" /></button>
+                        <button onClick={handleAnalyze} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg transition-all shadow-lg shadow-indigo-900/20">
                             <BrainCircuit className="w-4 h-4" /> Analyze
                         </button>
                     </div>

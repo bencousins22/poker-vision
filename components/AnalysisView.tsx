@@ -5,7 +5,45 @@ import { analyzePokerVideo } from '../services/gemini';
 import { saveHand } from '../services/storage';
 import { usePoker } from '../App';
 import ReactPlayer from 'react-player';
-import { Upload, Loader2, Youtube, Terminal, Copy, Save, Wand2, FileText, Film, Sparkles, FileVideo, Eye, DollarSign, Layers, Maximize, Minimize, Scan, Activity, Aperture, AlertTriangle, PlayCircle, ArrowRight, Settings2, ExternalLink } from 'lucide-react';
+import { Upload, Loader2, Youtube, Terminal, Copy, Save, Wand2, FileText, Film, Sparkles, FileVideo, Eye, DollarSign, Layers, Maximize, Minimize, Scan, Activity, Aperture, AlertTriangle, PlayCircle, ArrowRight, Settings2, ExternalLink, Check, Cloud } from 'lucide-react';
+
+const AnalysisPipeline: React.FC<{ step: number }> = ({ step }) => {
+    const steps = [
+        { id: 1, label: 'Upload' },
+        { id: 2, label: 'Connect' },
+        { id: 3, label: 'Vision' },
+        { id: 4, label: 'Parse' },
+        { id: 5, label: 'Done' }
+    ];
+
+    return (
+        <div className="flex items-center justify-between w-full max-w-lg mx-auto mb-6 relative">
+            <div className="absolute top-1/2 left-0 w-full h-0.5 bg-zinc-800 -z-10"></div>
+            <div 
+                className="absolute top-1/2 left-0 h-0.5 bg-poker-emerald transition-all duration-500 -z-10" 
+                style={{ width: `${((step - 1) / (steps.length - 1)) * 100}%` }}
+            ></div>
+            
+            {steps.map((s) => {
+                const isActive = step >= s.id;
+                const isCurrent = step === s.id;
+                
+                return (
+                    <div key={s.id} className="flex flex-col items-center gap-2">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
+                            isActive ? 'bg-poker-emerald border-poker-emerald text-black scale-110' : 'bg-zinc-900 border-zinc-700 text-zinc-500'
+                        }`}>
+                            {isActive ? <Check className="w-4 h-4" /> : <span className="text-xs font-bold">{s.id}</span>}
+                        </div>
+                        <span className={`text-[9px] font-bold uppercase tracking-wider ${isActive ? 'text-white' : 'text-zinc-600'}`}>
+                            {s.label}
+                        </span>
+                    </div>
+                );
+            })}
+        </div>
+    );
+};
 
 export const AnalysisView: React.FC = () => {
   const { addHand, activeVideoUrl, setSelectedHand, setViewMode } = usePoker();
@@ -316,6 +354,14 @@ export const AnalysisView: React.FC = () => {
 
             {/* CENTER: Video & HUD - Flex Column */}
             <div className="lg:col-span-6 flex flex-col h-full overflow-hidden gap-4">
+                
+                {/* Status Stepper (Visible only during processing) */}
+                {status !== AnalysisStatus.IDLE && (
+                    <div className="bg-zinc-900/50 p-4 rounded-xl border border-zinc-800 animate-slide-up">
+                        <AnalysisPipeline step={progressStep} />
+                    </div>
+                )}
+
                 {/* Advanced Player Container - Resizable but constrained */}
                 <div className={`transition-all duration-500 ease-in-out shrink-0 ${
                     isCinemaMode 
