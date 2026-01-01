@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { AnalysisResult, AnalysisStatus } from '../types';
+import { AnalysisResult, AnalysisStatus, HandHistory } from '../types';
 import { analyzePokerVideo } from '../services/gemini';
 import { saveHand } from '../services/storage';
 import { usePoker } from '../App';
@@ -29,12 +29,11 @@ export const AnalysisView: React.FC = () => {
   const logsEndRef = useRef<HTMLDivElement>(null);
 
   // Fix: Cast ReactPlayer to any to avoid internal library type definition conflicts
-  // where it is sometimes incorrectly inferred as a native HTMLVideoElement.
   const Player = ReactPlayer as any;
 
   useEffect(() => {
     if (activeVideoUrl) {
-        setUrl(activeVideoUrl || '');
+        setUrl(activeVideoUrl);
         setFile(null);
         setStatus(AnalysisStatus.IDLE);
         setResult(null);
@@ -163,15 +162,19 @@ export const AnalysisView: React.FC = () => {
     const hero = heroLine ? (heroLine.split('Dealt to ')[1]?.split(' [')[0] || 'Hero') : 'Hero';
     const potLine = lines.find(l => l.includes('Total pot'));
     const pot = potLine ? (potLine.match(/\$[\d,.]+/)?.[0] || '$0') : '$0';
-    
-    const newHand = saveHand({
+    const stakesLine = lines.find(l => l.includes('($'));
+    const stakes = stakesLine?.match(/\(\$[\d.]+\/\$[\d.]+/)?.[0]?.replace(/[()]/g, '') || '$100/$200';
+
+    const handData: Omit<HandHistory, 'id' | 'timestamp'> = {
       videoUrl: url || undefined,
       hero,
-      stakes: lines.find(l => l.includes('($'))?.match(/\(\$[\d.]+\/\$[\d.]+/)?.[0]?.replace(/[()]/g, '') || '$100/$200',
+      stakes,
       rawText: cleanText,
       summary: `${hero} vs Villain | ${pot} Pot`,
       potSize: pot
-    });
+    };
+
+    const newHand = saveHand(handData);
     addHand(newHand);
     addLog(`Hand saved to database: ${newHand.id}`, 'success');
     
@@ -345,13 +348,12 @@ export const AnalysisView: React.FC = () => {
                         {(url || filePreviewUrl) && !playerError && (
                             <div className="w-full h-full relative z-10 bg-black">
                                 <Player
-                                    url={filePreviewUrl || url || undefined}
+                                    url={filePreviewUrl || url}
                                     width="100%"
                                     height="100%"
                                     controls={true}
                                     playing={false}
                                     onError={(e: any) => {
-                                        // Suppress common YouTube restriction error codes from console if possible, but mostly handle UI
                                         setPlayerError(true);
                                         addLog(`Player Warning: Video restricted (Code ${e}). UI fallback active.`, "warning");
                                     }}

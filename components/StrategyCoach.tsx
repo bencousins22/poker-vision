@@ -5,6 +5,11 @@ import { usePoker } from '../App';
 import { BrainCircuit, Send, Sparkles, User, Bot, Loader2, Maximize2, Terminal, Lightbulb, Database } from 'lucide-react';
 import { ChatMessage, ViewMode } from '../types';
 
+interface ToolCallData {
+    name: string;
+    args: any;
+}
+
 export const StrategyCoach: React.FC = () => {
   const { selectedHand, hands, viewMode, setViewMode, activeVideoUrl, launchAnalysis } = usePoker();
   
@@ -62,7 +67,6 @@ export const StrategyCoach: React.FC = () => {
 
       try {
           // 1. Perform Local RAG Retrieval
-          // Simulating DB Latency for UX
           await new Promise(r => setTimeout(r, 600));
           const ragResult = retrieveContext(text, hands);
           
@@ -75,18 +79,16 @@ export const StrategyCoach: React.FC = () => {
           const enhancedPrompt = `${text}\n${ragResult.systemMessage}`;
 
           // 2. Send to Gemini
-          // Fix: Use 'message' parameter correctly for chat.sendMessage
-          const result = await chatSessionRef.current.sendMessage({
+          const response = await chatSessionRef.current.sendMessage({
               message: enhancedPrompt
           });
-          const response = result; // result IS the response in @google/genai
           
           // Check for Function Calls
           const functionCalls = response.functionCalls || [];
           
           if (functionCalls && functionCalls.length > 0) {
               // Handle Tools
-              const toolCallsData: any[] = [];
+              const toolCallsData: ToolCallData[] = [];
               
               for (const call of functionCalls) {
                   toolCallsData.push({ name: call.name, args: call.args });
@@ -108,8 +110,7 @@ export const StrategyCoach: React.FC = () => {
                   timestamp: Date.now()
               }]);
               
-              // If there's accompanying text, add it
-              const textContent = response.text || null;
+              const textContent = response.text;
               if (textContent) {
                    setMessages(prev => [...prev, {
                       id: crypto.randomUUID(),
@@ -120,8 +121,7 @@ export const StrategyCoach: React.FC = () => {
               }
 
           } else {
-              // Standard Text Response
-              const responseText = response.text || null;
+              const responseText = response.text;
               if (responseText) {
                   setMessages(prev => [...prev, {
                       id: crypto.randomUUID(),
@@ -134,14 +134,10 @@ export const StrategyCoach: React.FC = () => {
 
       } catch (error: any) {
           console.error("Chat Error", error);
-          let errorText = "I encountered an error connecting to the strategy engine.";
-          if (error.message?.includes("ContentUnion")) {
-              errorText += " (Protocol Mismatch)";
-          }
           setMessages(prev => [...prev, {
               id: crypto.randomUUID(),
               role: 'system',
-              text: errorText,
+              text: "I encountered an error connecting to the strategy engine.",
               timestamp: Date.now()
           }]);
       } finally {
@@ -152,14 +148,14 @@ export const StrategyCoach: React.FC = () => {
 
   // Listener for events from other components
   useEffect(() => {
-      const handleAnalyzeSpot = (e: CustomEvent) => {
+      const handleAnalyzeSpot = (e: any) => {
           const context = e.detail;
           if (context && context.trim().length > 0) {
               handleSend(context);
           }
       };
-      window.addEventListener('analyze-spot' as any, handleAnalyzeSpot);
-      return () => window.removeEventListener('analyze-spot' as any, handleAnalyzeSpot);
+      window.addEventListener('analyze-spot', handleAnalyzeSpot);
+      return () => window.removeEventListener('analyze-spot', handleAnalyzeSpot);
   }, [handleSend]);
 
   const getQuickPrompts = () => {
