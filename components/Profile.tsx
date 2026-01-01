@@ -227,6 +227,7 @@ export const Profile: React.FC = () => {
                                         <option value="google/gemini-2.0-pro-exp-02-05:free">Google Gemini 2.0 Pro Exp</option>
                                         <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
                                         <option value="openai/gpt-4o">GPT-4o</option>
+                                        <option value="nvidia/nemotron-nano-12b-v2-vl:free">Nvidia Nemotron Nano 12B VL (Free)</option>
                                     </>
                                 )}
                             </select>

@@ -16,7 +16,7 @@ import { SolverView } from './components/SolverView';
 import { ToastContainer } from './components/Toast';
 import { getHands, deleteHand as deleteHandService, updateHand as updateHandService, saveUser, getUser, removeUser, clearDatabase } from './services/storage';
 import { HandHistory, ViewMode, User, PokerContextType, QueueItem, ChannelVideo, Toast } from './types';
-import { LayoutDashboard, BrainCircuit, User as UserIcon, PlayCircle, CreditCard, Tv, Eye, Sparkles, X, FlaskConical, Target, AlertTriangle, RefreshCcw, PanelLeftClose, PanelLeftOpen, PanelRightClose, MessageSquare, ChevronRight, Grid3X3 } from 'lucide-react';
+import { LayoutDashboard, BrainCircuit, User as UserIcon, PlayCircle, CreditCard, Tv, Eye, Sparkles, X, FlaskConical, Target, AlertTriangle, RefreshCcw, PanelLeftClose, PanelLeftOpen, PanelRightClose, MessageSquare, ChevronRight, Grid3X3, Zap } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 // --- Error Boundary ---
@@ -31,14 +31,19 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
   render() {
     if (this.state.hasError) {
       return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-[#09090b] text-white p-6 text-center">
-          <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-6 border border-red-500/20">
-            <AlertTriangle className="w-8 h-8 text-red-500" />
+        <div className="flex flex-col items-center justify-center min-h-screen bg-[#09090b] text-white p-6 text-center animate-in fade-in">
+          <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mb-6 border border-red-500/20 shadow-[0_0_30px_rgba(239,68,68,0.2)]">
+            <AlertTriangle className="w-10 h-10 text-red-500" />
           </div>
-          <h2 className="text-2xl font-bold mb-2">Application Error</h2>
-          <p className="text-zinc-400 mb-6 max-w-md text-sm">{this.state.error?.message}</p>
-          <button onClick={() => window.location.reload()} className="flex items-center gap-2 px-6 py-2 bg-white text-black rounded-full font-bold text-sm hover:bg-zinc-200 transition-colors">
-            <RefreshCcw className="w-4 h-4" /> Reload
+          <h2 className="text-3xl font-black mb-2">System Malfunction</h2>
+          <p className="text-zinc-400 mb-8 max-w-md text-sm leading-relaxed">
+            The application encountered an unexpected error. This might be due to a network interruption or data corruption.
+          </p>
+          <div className="bg-zinc-900 p-4 rounded-xl border border-zinc-800 mb-8 max-w-lg w-full text-left overflow-auto max-h-48">
+             <code className="text-xs font-mono text-red-400 block whitespace-pre-wrap">{this.state.error?.message}</code>
+          </div>
+          <button onClick={() => window.location.reload()} className="flex items-center gap-2 px-8 py-3 bg-white text-black rounded-full font-bold text-sm hover:bg-zinc-200 transition-all hover:scale-105 shadow-lg">
+            <RefreshCcw className="w-4 h-4" /> Reload Application
           </button>
         </div>
       );
@@ -107,8 +112,12 @@ const AppShell: React.FC = () => {
             height: `${100/appScale}vh`
         }}
     >
-        {/* Navigation Rail */}
-        <nav className="w-16 flex flex-col items-center py-6 border-r border-zinc-800/80 bg-[#050505] z-40 shrink-0 gap-6">
+        {/* Navigation Rail - Auto Hiding */}
+        {/* Trigger Zone */}
+        <div className="fixed left-0 top-0 bottom-0 w-2 z-[60] peer hover:bg-poker-gold/50 transition-colors duration-300 cursor-pointer" />
+        
+        {/* Nav Bar */}
+        <nav className="fixed left-0 top-0 h-full w-16 flex flex-col items-center py-6 border-r border-zinc-800/80 bg-[#050505]/95 backdrop-blur-md z-50 shrink-0 gap-6 -translate-x-full peer-hover:translate-x-0 hover:translate-x-0 transition-transform duration-300 shadow-[10px_0_30px_rgba(0,0,0,0.5)]">
             <div className="w-10 h-10 bg-gradient-to-br from-poker-gold to-amber-700 rounded-xl flex items-center justify-center shadow-lg shrink-0 cursor-default">
                 <span className="font-black text-black text-xs tracking-tighter">PV</span>
             </div>
@@ -153,7 +162,7 @@ const AppShell: React.FC = () => {
         {/* Toggle Left */}
         <button 
             onClick={() => setLeftOpen(!leftOpen)} 
-            className="absolute bottom-6 left-[70px] z-50 p-1.5 bg-zinc-900 border border-zinc-700 rounded-full text-zinc-500 hover:text-white hover:border-zinc-500 transition-all shadow-lg hover:scale-110"
+            className="absolute bottom-6 left-4 z-40 p-1.5 bg-zinc-900 border border-zinc-700 rounded-full text-zinc-500 hover:text-white hover:border-zinc-500 transition-all shadow-lg hover:scale-110"
             style={{ transform: leftOpen ? 'translateX(305px)' : 'translateX(0)' }}
         >
             {leftOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}

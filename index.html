@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en" class="dark">
   <head>
@@ -6,6 +7,12 @@
     <title>PokerVision AI - Pro Analytics</title>
     <meta name="description" content="AI-powered poker hand history converter and analysis tool for Hustler Casino Live and other streams." />
     
+    <!-- Polyfills for Node environment variables -->
+    <script>
+      window.process = { env: { NODE_ENV: 'development' }, browser: true };
+      window.global = window;
+    </script>
+
     <!-- Font Preconnections -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -66,6 +73,7 @@
       }
     </script>
     <style>
+      /* Ensure scrollbars are always styled correctly */
       ::-webkit-scrollbar {
         width: 6px;
         height: 6px;
@@ -86,12 +94,10 @@
         -webkit-backdrop-filter: blur(12px);
         border: 1px solid rgba(255, 255, 255, 0.08);
       }
+      /* Prevent tailwind warning from breaking layout shift */
+      body { visibility: visible !important; }
     </style>
-    <!-- Polyfill for process/node modules often expected by libs in browser environments -->
-    <script>
-      window.process = { env: { NODE_ENV: 'development' } };
-      window.global = window;
-    </script>
+    
   <script type="importmap">
 {
   "imports": {

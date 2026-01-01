@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState, useEffect } from 'react';
 import { usePoker } from '../App';
 import { calculateStats, parseHeroHandDetails, getHoleCardsKey, calculateSessions } from '../services/statsParser';
@@ -17,7 +16,7 @@ import {
 
 // --- Utility Components ---
 
-const CustomTooltip = ({ active, payload, label, formatter }: { active?: boolean; payload?: any[]; label?: string; formatter?: (value: number) => React.ReactNode }) => {
+const CustomTooltip = ({ active, payload, label, formatter }: { active?: boolean; payload?: any[]; label?: string; formatter?: (value: any) => React.ReactNode }) => {
     if (active && payload && payload.length) {
         return (
             <div className="bg-[#09090b] border border-zinc-800 p-3 rounded-lg shadow-2xl backdrop-blur-md z-50">
@@ -27,7 +26,7 @@ const CustomTooltip = ({ active, payload, label, formatter }: { active?: boolean
                         <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
                         <span className="text-zinc-300">{entry.name}:</span>
                         <span className="text-white font-mono font-bold">
-                            {formatter ? formatter(Number(entry.value)) : entry.value}
+                            {formatter ? formatter(entry.value) : entry.value}
                         </span>
                     </div>
                 ))}
@@ -73,7 +72,7 @@ const KPICard = ({ label, value, subtext, icon: Icon, trend, color = "emerald" }
                 {trend !== undefined && (
                     <div className={`flex items-center gap-1 text-[10px] font-bold ${trend >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                         {trend >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-                        {Math.abs(trend)}%
+                        {Math.abs(trend as number)}%
                     </div>
                 )}
             </div>
@@ -134,6 +133,13 @@ const OverviewTab = ({ hands, stats, timeFilter, setTimeFilter }: { hands: HandH
 
     const maxWin = Math.max(...Array.from(heatmapData.values()), 1);
 
+    // Safe accessors for heroStats
+    const winnings = heroStats?.winnings ?? 0;
+    const bb100 = heroStats?.bb100 ?? 0;
+    const vpip = heroStats?.vpip ?? 0;
+    const pfr = heroStats?.pfr ?? 0;
+    const threeBet = heroStats?.threeBet ?? 0;
+
     return (
         <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500 pb-10">
             {/* Control Bar */}
@@ -155,15 +161,15 @@ const OverviewTab = ({ hands, stats, timeFilter, setTimeFilter }: { hands: HandH
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <KPICard 
                     label="Net Winnings" 
-                    value={`$${heroStats?.winnings.toLocaleString() ?? '0'}`} 
+                    value={`$${winnings.toLocaleString()}`} 
                     subtext={`${hands.length} Hands Tracked`}
                     icon={DollarSign} 
                     trend={12} 
-                    color={heroStats?.winnings >= 0 ? "emerald" : "red"}
+                    color={winnings >= 0 ? "emerald" : "red"}
                 />
                 <KPICard 
                     label="BB / 100" 
-                    value={heroStats?.bb100.toFixed(1) ?? '0'} 
+                    value={bb100.toFixed(1)} 
                     subtext="Winrate"
                     icon={Activity} 
                     trend={5} 
@@ -171,14 +177,14 @@ const OverviewTab = ({ hands, stats, timeFilter, setTimeFilter }: { hands: HandH
                 />
                 <KPICard 
                     label="VPIP / PFR" 
-                    value={`${heroStats?.vpip.toFixed(0) ?? 0} / ${heroStats?.pfr.toFixed(0) ?? 0}`} 
+                    value={`${vpip.toFixed(0)} / ${pfr.toFixed(0)}`} 
                     subtext="Preflop Aggression"
                     icon={Target} 
                     color="gold"
                 />
                 <KPICard 
                     label="3-Bet %" 
-                    value={`${heroStats?.threeBet.toFixed(1) ?? 0}%`} 
+                    value={`${threeBet.toFixed(1)}%`} 
                     subtext="Re-Raise Freq"
                     icon={Zap} 
                     color="red"
@@ -218,7 +224,7 @@ const OverviewTab = ({ hands, stats, timeFilter, setTimeFilter }: { hands: HandH
                                     tickFormatter={(val: any) => `$${val}`}
                                     width={40}
                                 />
-                                <Tooltip content={<CustomTooltip formatter={(val: number) => `$${val.toLocaleString()}`} />} />
+                                <Tooltip content={<CustomTooltip formatter={(val: any) => `$${Number(val as any).toLocaleString()}`} />} />
                                 <Area type="monotone" dataKey="total" stroke="#10b981" strokeWidth={2} fill="url(#colorTotal)" name="Total Profit" />
                                 <Area type="monotone" dataKey="sd" stroke="#3b82f6" strokeWidth={2} fill="none" strokeDasharray="3 3" name="Showdown" />
                                 <Area type="monotone" dataKey="nsd" stroke="#ef4444" strokeWidth={2} fill="none" strokeDasharray="3 3" name="Non-Showdown" />
@@ -246,7 +252,7 @@ const OverviewTab = ({ hands, stats, timeFilter, setTimeFilter }: { hands: HandH
                                     let bg = 'bg-[#18181b]';
                                     let text = 'text-zinc-700';
                                     if (val !== 0) {
-                                        const opacity = Math.min(Math.abs(val) / maxWin, 1) * 0.9 + 0.1;
+                                        const opacity = Math.min(Math.abs(val as number) / maxWin, 1) * 0.9 + 0.1;
                                         bg = val > 0 ? `rgba(16, 185, 129, ${opacity})` : `rgba(239, 68, 68, ${opacity})`;
                                         text = 'text-white';
                                     }
@@ -281,7 +287,7 @@ const OverviewTab = ({ hands, stats, timeFilter, setTimeFilter }: { hands: HandH
                                 <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
                                 <XAxis dataKey="pos" tick={{fontSize: 10, fill: '#71717a', fontWeight: 'bold'}} axisLine={false} tickLine={false} />
                                 <YAxis hide />
-                                <Tooltip cursor={{fill: '#27272a'}} content={<CustomTooltip formatter={(v: number) => `$${v}`} />} />
+                                <Tooltip cursor={{fill: '#27272a'}} content={<CustomTooltip formatter={(v: any) => `$${v}`} />} />
                                 <Bar dataKey="val" fill="#10b981" radius={[4, 4, 0, 0]}>
                                     {positionData.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={entry.val >= 0 ? '#10b981' : '#ef4444'} />

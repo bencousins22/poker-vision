@@ -26,7 +26,6 @@ const AnalysisPipeline: React.FC<{ step: number }> = ({ step }) => {
             
             {steps.map((s) => {
                 const isActive = step >= s.id;
-                const isCurrent = step === s.id;
                 
                 return (
                     <div key={s.id} className="flex flex-col items-center gap-2">
@@ -182,7 +181,7 @@ export const AnalysisView: React.FC = () => {
     } catch (err: any) {
         setError(err.message);
         setStatus(AnalysisStatus.ERROR);
-        addLog(`Critical Failure: ${err.message}`, 'error');
+        addLog(`Analysis Failed: ${err.message}`, 'error');
     }
   };
 
@@ -264,12 +263,17 @@ export const AnalysisView: React.FC = () => {
                     <div className="absolute top-0 right-0 w-32 h-32 bg-poker-emerald/5 rounded-full blur-2xl -mr-16 -mt-16 pointer-events-none"></div>
 
                     {error && (
-                        <div className="bg-red-500/10 border border-red-500/30 p-3 rounded-lg flex flex-col gap-1 relative overflow-hidden animate-in slide-in-from-left-2">
+                        <div className="bg-red-500/10 border border-red-500/30 p-3 rounded-lg flex flex-col gap-2 relative overflow-hidden animate-in slide-in-from-left-2 z-20">
                             <div className="flex items-center gap-2 text-red-400 font-bold text-xs uppercase tracking-wider">
                                 <AlertTriangle className="w-3.5 h-3.5" /> Analysis Failed
                             </div>
                             <p className="text-[10px] text-zinc-300 leading-snug">{error}</p>
-                            <button onClick={() => { setError(null); setStatus(AnalysisStatus.IDLE); }} className="absolute top-2 right-2 text-red-400 hover:text-white"><RefreshCw className="w-3 h-3" /></button>
+                            <button 
+                                onClick={handleAnalyze} 
+                                className="mt-2 flex items-center justify-center gap-2 w-full py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-300 text-[10px] font-bold rounded transition-colors"
+                            >
+                                <RefreshCw className="w-3 h-3" /> Retry Analysis
+                            </button>
                         </div>
                     )}
 

@@ -1,5 +1,5 @@
 
-import { GoogleGenAI, Tool, Type, Part } from "@google/genai";
+import { GoogleGenAI, Tool, Type, Part, GenerateContentResponse } from "@google/genai";
 import { AnalysisResult, AISettings, ChatMessage, HandHistory } from "../types";
 
 // Helper to convert file to base64
@@ -95,14 +95,71 @@ const getActiveSettings = (settings?: AISettings) => {
     return { provider, apiKey, model, accessToken };
 };
 
+// --- Helper: Retry Logic ---
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+async function withRetry<T>(fn: () => Promise<T>, retries = 3, backoff = 2000): Promise<T> {
+    try {
+        return await fn();
+    } catch (e: any) {
+        const msg = e.message || e.toString();
+        // Check for 429, Quota, or Overloaded errors
+        if (retries > 0 && (
+            msg.includes('429') || 
+            msg.includes('Quota') || 
+            msg.includes('Overloaded') || 
+            msg.includes('RESOURCE_EXHAUSTED') ||
+            msg.includes('rate limit')
+        )) {
+            // Add randomness to backoff to prevent thundering herd
+            const jitter = Math.random() * 1000;
+            const waitTime = backoff + jitter;
+            console.warn(`API Rate Limited. Retrying in ${Math.round(waitTime)}ms... (${retries} retries left)`);
+            await delay(waitTime);
+            return withRetry(fn, retries - 1, backoff * 2); // Exponential backoff
+        }
+        throw e;
+    }
+}
+
 // --- Error Helper ---
 const formatError = (e: any): string => {
-    const msg = e.message || e.toString();
+    let msg = e.message || e.toString();
+    
+    // Attempt to recursively parse nested JSON error strings
+    // The API often returns errors wrapped in multiple layers of JSON strings
+    try {
+        if (typeof msg === 'string' && (msg.startsWith('{') || msg.startsWith('['))) {
+            const parsed = JSON.parse(msg);
+            
+            // Check for specific Google API nested error structure
+            if (parsed.error) {
+                // If the inner message is also a stringified JSON (common in proxy errors)
+                if (typeof parsed.error.message === 'string' && parsed.error.message.startsWith('{')) {
+                    return formatError(new Error(parsed.error.message));
+                }
+                
+                if (parsed.error.code === 429 || parsed.error.status === 'RESOURCE_EXHAUSTED') {
+                    return "Quota Exceeded: You have reached the API rate limit. Please try again in a few moments.";
+                }
+                
+                if (parsed.error.message) {
+                    msg = parsed.error.message;
+                }
+            }
+        }
+    } catch (parseError) {
+        // Fallback to raw message if parsing fails
+    }
+
     if (msg.includes('401') || msg.includes('API key') || msg.includes('UNAUTHENTICATED')) return "Authentication Failed: Check your API Key or Login.";
-    if (msg.includes('429') || msg.includes('Quota') || msg.includes('RESOURCE_EXHAUSTED')) return "Quota Exceeded: The model is overloaded or you reached your limit.";
+    if (msg.includes('429') || msg.includes('Quota') || msg.includes('RESOURCE_EXHAUSTED')) return "Quota Exceeded: The model is overloaded or you reached your limit. Please wait a moment.";
     if (msg.includes('400') || msg.includes('INVALID_ARGUMENT')) return "Bad Request: The video format might be unsupported or the prompt is invalid.";
     if (msg.includes('503') || msg.includes('Overloaded')) return "Service Overloaded: Google AI is experiencing high traffic. Try again later.";
-    return `AI Service Error: ${msg}`;
+    if (msg.includes('Failed to fetch')) return "Network Error: Could not connect to AI service. Check your internet connection.";
+    
+    // Clean up generic error prefixes
+    return msg.replace(/^Error:\s*/, '').replace(/^{.*"message":\s*"(.*)".*}$/s, '$1');
 };
 
 // --- OpenRouter Implementation ---
@@ -113,32 +170,34 @@ const callOpenRouter = async (
     messages: any[], 
     streamCallback?: (text: string) => void
 ): Promise<string> => {
-    try {
-        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${apiKey}`,
-                "Content-Type": "application/json",
-                "HTTP-Referer": typeof window !== 'undefined' ? window.location.origin : "https://pokervision.app",
-                "X-Title": "PokerVision"
-            },
-            body: JSON.stringify({
-                model: model,
-                messages: messages,
-                stream: false 
-            })
-        });
+    return withRetry(async () => {
+        try {
+            const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${apiKey}`,
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": typeof window !== 'undefined' ? window.location.origin : "https://pokervision.app",
+                    "X-Title": "PokerVision"
+                },
+                body: JSON.stringify({
+                    model: model,
+                    messages: messages,
+                    stream: false 
+                })
+            });
 
-        if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.error?.message || response.statusText);
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(JSON.stringify(err));
+            }
+
+            const data = await response.json();
+            return data.choices?.[0]?.message?.content || "";
+        } catch (e: any) {
+            throw new Error(`OpenRouter: ${e.message}`);
         }
-
-        const data = await response.json();
-        return data.choices?.[0]?.message?.content || "";
-    } catch (e: any) {
-        throw new Error(`OpenRouter: ${e.message}`);
-    }
+    });
 };
 
 // --- Google OAuth REST Implementation (Fallback) ---
@@ -150,44 +209,44 @@ const callGeminiRest = async (
     systemInstruction: string,
     tools: any[] = []
 ): Promise<{ text: string }> => {
-    // Basic REST implementation for generateContent
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-    
-    const body: any = {
-        contents: contents,
-        systemInstruction: { parts: [{ text: systemInstruction }] },
-        generationConfig: {
-            temperature: 0.2,
-            topK: 64,
-            topP: 0.95
-        }
-    };
+    return withRetry(async () => {
+        // Basic REST implementation for generateContent
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+        
+        const body: any = {
+            contents: contents,
+            systemInstruction: { parts: [{ text: systemInstruction }] },
+            generationConfig: {
+                temperature: 0.2,
+                topK: 64,
+                topP: 0.95
+            }
+        };
 
-    if (tools.length > 0) {
-        // Simple mapping for tools if needed, but for analysis we usually don't use them in REST fallback
-        // For simple Search:
-        if (tools[0].googleSearch) {
-            body.tools = [{ googleSearch: {} }];
+        if (tools.length > 0) {
+            if (tools[0].googleSearch) {
+                body.tools = [{ googleSearch: {} }];
+            }
         }
-    }
 
-    const response = await fetch(url, {
-        method: "POST",
-        headers: {
-            "Authorization": `Bearer ${accessToken}`,
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify(body)
+        const response = await fetch(url, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${accessToken}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(body)
+        });
+
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(JSON.stringify(err));
+        }
+
+        const data = await response.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        return { text };
     });
-
-    if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error?.message || response.statusText);
-    }
-
-    const data = await response.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    return { text };
 };
 
 export const analyzePokerVideo = async (
@@ -237,20 +296,23 @@ export const analyzePokerVideo = async (
 
               progressCallback(`Connecting to ${model}...`);
               
-              const responseStream = await ai.models.generateContentStream({
-                  model: model,
-                  contents: [{ parts }],
-                  config: config
-              });
+              // Wrap SDK call with manual retry logic mainly for rate limits not handled by SDK
+              return await withRetry(async () => {
+                  const responseStream = await ai.models.generateContentStream({
+                      model: model,
+                      contents: [{ parts }],
+                      config: config
+                  });
 
-              let fullText = '';
-              for await (const chunk of responseStream) {
-                  if (chunk.text) {
-                      fullText += chunk.text;
-                      if (streamCallback) streamCallback(fullText);
+                  let fullText = '';
+                  for await (const chunk of responseStream) {
+                      if (chunk.text) {
+                          fullText += chunk.text;
+                          if (streamCallback) streamCallback(fullText);
+                      }
                   }
-              }
-              return { handHistory: fullText, summary: "Analysis Complete" };
+                  return { handHistory: fullText, summary: "Analysis Complete" };
+              }, 3, 3000); // More aggressive backoff starting at 3s
           } 
           
           // If OAuth/No API Key but Access Token exists
@@ -348,11 +410,13 @@ export const getCoachChat = (systemContext: string, settings?: AISettings): Chat
         return {
             sendMessage: async ({ message }) => {
                 try {
-                    const result = await chat.sendMessage({ message });
-                    return { 
-                        text: result.text || "", 
-                        functionCalls: result.functionCalls 
-                    };
+                    return await withRetry(async () => {
+                        const result = await chat.sendMessage({ message });
+                        return { 
+                            text: result.text || "", 
+                            functionCalls: result.functionCalls 
+                        };
+                    });
                 } catch (e) {
                     throw new Error(formatError(e));
                 }
@@ -420,10 +484,10 @@ export const generatePlayerNote = async (hand: HandHistory, settings?: AISetting
     try {
         if (provider === 'google' && apiKey) {
             const ai = new GoogleGenAI({ apiKey });
-            const response = await ai.models.generateContent({
+            const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
                 model,
                 contents: [{ parts: [{ text: prompt }] }]
-            });
+            }));
             return response.text?.trim() || "";
         } else if ((provider === 'google' || provider === 'google-oauth') && accessToken) {
              const res = await callGeminiRest(accessToken, model, [{ role: 'user', parts: [{ text: prompt }]}], "Note Taker");
