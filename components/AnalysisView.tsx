@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { AnalysisResult, AnalysisStatus, HandHistory } from '../types';
 import { analyzePokerVideo } from '../services/gemini';
@@ -113,18 +114,17 @@ export const AnalysisView: React.FC = () => {
     setStreamingContent('');
     setLogs([]); 
     
-    if (file) {
-        addLog(`Initializing Gemini 1.5 Pro Vision Pipeline for ${file.name}...`, 'system');
-    } else {
-        addLog(`Initializing Gemini 3 Pro Search Agent for URL...`, 'system');
-    }
+    const sourceMsg = file ? `Video File (${file.name})` : 'YouTube URL';
+    addLog(`Initializing Analysis for ${sourceMsg}...`, 'system');
+    addLog(`Protocol: ${siteFormat}`, 'system');
 
     try {
         setTimeout(() => setProgressStep(2), 1500);
 
         const res = await analyzePokerVideo(
             file, 
-            url, 
+            url,
+            siteFormat,
             (msg) => { 
                 addLog(msg, 'info'); 
                 if (msg.includes('Generating')) setProgressStep(3);
@@ -138,7 +138,7 @@ export const AnalysisView: React.FC = () => {
         setResult(res);
         setStatus(AnalysisStatus.COMPLETE);
         setProgressStep(5);
-        addLog("Analysis pipeline finished successfully.", 'success');
+        addLog("Hand History Extraction Complete.", 'success');
     } catch (err: any) {
         setError(err.message);
         setStatus(AnalysisStatus.ERROR);
@@ -191,104 +191,109 @@ export const AnalysisView: React.FC = () => {
   const canAnalyze = (!!url && url.length > 5) || !!file;
 
   return (
-    <div className="flex-1 p-6 lg:p-10 overflow-y-auto scroll-smooth bg-gradient-to-b from-background to-black/80">
-      <div className="max-w-[1600px] mx-auto space-y-8">
-        
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-white/5">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-poker-emerald/10 border border-poker-emerald/20 text-poker-emerald text-xs font-bold uppercase tracking-wider shadow-[0_0_15px_rgba(16,185,129,0.2)]">
+    <div className="flex-1 flex flex-col h-full bg-gradient-to-b from-background to-black/80 overflow-hidden">
+      
+      {/* Header - Fixed Height */}
+      <div className="shrink-0 flex flex-col md:flex-row md:items-end justify-between gap-4 px-6 py-4 border-b border-white/5 bg-background/50 backdrop-blur-sm z-10">
+          <div className="space-y-1">
+            <div className="inline-flex items-center gap-2 px-2 py-0.5 rounded-full bg-poker-emerald/10 border border-poker-emerald/20 text-poker-emerald text-[10px] font-bold uppercase tracking-wider shadow-[0_0_15px_rgba(16,185,129,0.2)]">
               <Sparkles className="w-3 h-3 animate-pulse" /> Vision Engine v2.4
             </div>
-            <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight">
+            <h1 className="text-2xl font-black text-white tracking-tight">
               Video Analysis
             </h1>
-            <p className="text-sm text-zinc-400 font-medium max-w-xl">
-              Upload footage for <span className="text-white font-bold">Pixel-Perfect Vision Analysis</span> (Gemini 1.5 Pro) or use a URL for metadata search.
-            </p>
           </div>
           
           <div className="flex items-center gap-3">
-             <div className="px-4 py-2 bg-zinc-900 border border-zinc-800 rounded-full flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${status === AnalysisStatus.PROCESSING ? 'bg-poker-gold animate-pulse' : 'bg-poker-green'}`}></div>
-                <span className="text-xs font-mono text-zinc-300 uppercase tracking-wider">
-                    {status === AnalysisStatus.PROCESSING ? 'ENGINE ACTIVE' : 'SYSTEM READY'}
+             <div className="px-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded-full flex items-center gap-2">
+                <div className={`w-1.5 h-1.5 rounded-full ${status === AnalysisStatus.PROCESSING ? 'bg-poker-gold animate-pulse' : 'bg-poker-green'}`}></div>
+                <span className="text-[10px] font-mono text-zinc-300 uppercase tracking-wider">
+                    {status === AnalysisStatus.PROCESSING ? 'PROCESSING' : 'READY'}
                 </span>
              </div>
           </div>
-        </div>
+      </div>
 
-        {/* Main Interface */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 h-[calc(100vh-280px)] min-h-[600px]">
+      {/* Main Grid Content - Fills remaining height */}
+      <div className="flex-1 min-h-0 p-4 lg:p-6 overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-full">
             
-            {/* LEFT: Controls & Input */}
-            <div className="lg:col-span-3 flex flex-col gap-6 h-full">
-                <div className="bg-gradient-to-b from-zinc-900/50 to-zinc-950/50 border border-white/5 rounded-3xl p-6 flex flex-col gap-6 shadow-xl backdrop-blur-md flex-1 relative overflow-hidden">
-                    {/* Decorative Element */}
+            {/* LEFT: Controls - Scrollable independently */}
+            <div className="lg:col-span-3 flex flex-col h-full overflow-hidden">
+                <div className="bg-gradient-to-b from-zinc-900/50 to-zinc-950/50 border border-white/5 rounded-2xl p-4 flex flex-col gap-4 shadow-xl backdrop-blur-md h-full relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-poker-emerald/5 rounded-full blur-2xl -mr-16 -mt-16 pointer-events-none"></div>
 
-                    <div className="space-y-4 relative z-10">
+                    <div className="space-y-4 relative z-10 overflow-y-auto flex-1 scrollbar-none">
+                        {/* File Input */}
                         <div 
                             onClick={() => fileInputRef.current?.click()}
-                            className={`group relative border border-dashed rounded-xl p-6 transition-all cursor-pointer text-center flex flex-col items-center justify-center ${
+                            className={`group relative border border-dashed rounded-xl p-4 transition-all cursor-pointer text-center flex flex-col items-center justify-center min-h-[100px] ${
                                 file ? 'border-poker-emerald/50 bg-poker-emerald/5' : 'border-zinc-800 hover:border-zinc-600 hover:bg-zinc-800/50'
                             }`}
                         >
                             <input type="file" ref={fileInputRef} className="hidden" accept="video/*" onChange={(e) => { setFile(e.target.files?.[0] || null); if(url) setUrl(''); }} />
                             {file ? (
                                 <div className="flex flex-col items-center gap-2 animate-in zoom-in duration-300">
-                                    <FileVideo className="w-8 h-8 text-poker-emerald" />
+                                    <FileVideo className="w-6 h-6 text-poker-emerald" />
                                     <span className="text-xs font-bold text-white max-w-[150px] truncate">{file.name}</span>
-                                    <span className="text-[10px] text-zinc-500">{(file.size / 1024 / 1024).toFixed(1)} MB • Ready</span>
+                                    <span className="text-[9px] text-zinc-500">{(file.size / 1024 / 1024).toFixed(1)} MB</span>
                                 </div>
                             ) : (
-                                <div className="flex flex-col items-center gap-2 text-zinc-500 group-hover:text-zinc-300">
-                                    <Upload className="w-6 h-6" />
-                                    <span className="text-xs font-bold text-white">Upload Video File</span>
-                                    <span className="text-[10px]">For Full Vision Analysis</span>
+                                <div className="flex flex-col items-center gap-1 text-zinc-500 group-hover:text-zinc-300">
+                                    <Upload className="w-5 h-5" />
+                                    <span className="text-xs font-bold text-white">Upload File</span>
+                                    <span className="text-[9px]">Best for Vision API</span>
                                 </div>
                             )}
                         </div>
 
-                        <div className="relative flex items-center py-2">
-                            <div className="flex-grow border-t border-zinc-800"></div>
-                            <span className="flex-shrink-0 mx-3 text-zinc-700 text-[9px] font-bold uppercase">OR USE URL</span>
-                            <div className="flex-grow border-t border-zinc-800"></div>
-                        </div>
-
+                        {/* URL Input */}
                         <div className="relative group">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <Youtube className="h-4 w-4 text-zinc-600 group-focus-within:text-red-500 transition-colors" />
+                            </div>
                             <input 
                                 type="text" 
                                 placeholder="YouTube URL..."
-                                className="w-full bg-black/40 border border-zinc-800 rounded-xl px-4 py-3 pl-10 text-xs text-white focus:border-poker-emerald focus:ring-1 focus:ring-poker-emerald transition-all shadow-inner"
+                                className="w-full bg-black/40 border border-zinc-800 rounded-xl py-3 pl-10 pr-3 text-xs text-white focus:border-poker-emerald focus:ring-1 focus:ring-poker-emerald transition-all shadow-inner"
                                 value={url}
                                 onChange={(e) => { setUrl(e.target.value); if(file) setFile(null); setPlayerError(false); }}
                             />
-                            <Youtube className="absolute left-3 top-3 w-4 h-4 text-zinc-600 group-focus-within:text-red-500 transition-colors" />
                         </div>
 
-                        <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2 pt-2">
-                            <Settings2 className="w-3 h-3" /> Format
-                        </label>
-                        <select 
-                            className="w-full bg-black/40 border border-zinc-800 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-zinc-600"
-                            value={siteFormat}
-                            onChange={(e) => setSiteFormat(e.target.value)}
-                        >
-                            <option>Hustler Casino Live</option>
-                            <option>Triton Poker</option>
-                            <option>PokerGO / High Stakes Poker</option>
-                            <option>The Lodge Live</option>
-                            <option>Generic Online (Stars/GG)</option>
-                        </select>
+                        {/* Format Select */}
+                        <div className="space-y-1">
+                            <label className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-1">
+                                <Settings2 className="w-3 h-3" /> Protocol
+                            </label>
+                            <div className="relative">
+                                <select 
+                                    className="w-full bg-black/40 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-zinc-600 appearance-none"
+                                    value={siteFormat}
+                                    onChange={(e) => setSiteFormat(e.target.value)}
+                                >
+                                    <option>Hustler Casino Live</option>
+                                    <option>Triton Poker</option>
+                                    <option>PokerGO</option>
+                                    <option>The Lodge Live</option>
+                                    <option>Generic Online</option>
+                                </select>
+                                <div className="absolute right-3 top-2.5 pointer-events-none text-zinc-500 text-[10px]">▼</div>
+                            </div>
+                            
+                            {siteFormat.includes('Hustler') && (
+                                <div className="mt-2 px-3 py-1.5 bg-poker-emerald/10 border border-poker-emerald/20 rounded-lg text-[9px] text-poker-emerald font-bold flex items-center gap-2 animate-in fade-in slide-in-from-top-1">
+                                    <Scan className="w-3 h-3" /> HCL Overlay Active
+                                </div>
+                            )}
+                        </div>
                     </div>
 
-                    <div className="flex-1"></div>
-
+                    {/* Action Button */}
                     <button 
                         onClick={handleAnalyze}
                         disabled={!canAnalyze || status === AnalysisStatus.PROCESSING}
-                        className={`w-full group relative overflow-hidden rounded-xl font-bold text-sm py-4 shadow-lg transition-all ${
+                        className={`w-full shrink-0 relative overflow-hidden rounded-xl font-bold text-xs py-3.5 shadow-lg transition-all ${
                             canAnalyze && status !== AnalysisStatus.PROCESSING
                             ? 'bg-white text-black hover:shadow-poker-emerald/20 hover:scale-[1.02]' 
                             : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
@@ -296,49 +301,47 @@ export const AnalysisView: React.FC = () => {
                     >
                         {status === AnalysisStatus.PROCESSING ? (
                             <div className="flex items-center justify-center gap-2">
-                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <Loader2 className="w-3 h-3 animate-spin" />
                                 <span>Processing...</span>
                             </div>
                         ) : (
                             <div className="flex items-center justify-center gap-2">
-                                <Wand2 className="w-4 h-4" />
+                                <Wand2 className="w-3 h-3" />
                                 <span>Start Analysis</span>
-                                <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 -ml-2 group-hover:ml-0 transition-all" />
                             </div>
                         )}
                     </button>
                 </div>
             </div>
 
-            {/* CENTER: Video & Results */}
-            <div className="lg:col-span-6 flex flex-col gap-6 h-full relative z-20">
-                {/* Advanced Player Container */}
-                <div className={`transition-all duration-500 ease-in-out ${
+            {/* CENTER: Video & HUD - Flex Column */}
+            <div className="lg:col-span-6 flex flex-col h-full overflow-hidden gap-4">
+                {/* Advanced Player Container - Resizable but constrained */}
+                <div className={`transition-all duration-500 ease-in-out shrink-0 ${
                     isCinemaMode 
                     ? 'fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 backdrop-blur-xl' 
-                    : 'relative w-full aspect-video rounded-3xl group shadow-2xl'
+                    : 'relative w-full aspect-video rounded-2xl group shadow-2xl bg-black border border-zinc-800'
                 }`}>
-                    <div className={`relative overflow-hidden ${
-                        isCinemaMode ? 'w-full max-w-6xl aspect-video rounded-xl shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-white/10' : 'w-full h-full rounded-3xl border border-zinc-800 ring-1 ring-white/5'
+                    <div className={`relative overflow-hidden w-full h-full ${
+                        isCinemaMode ? 'max-w-7xl aspect-video rounded-xl shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-white/10' : 'rounded-2xl'
                     }`}>
                         
                         {/* Error State */}
                         {playerError && (
                             <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-950 z-20 p-6 text-center">
-                                <AlertTriangle className="w-12 h-12 text-yellow-500 mb-4" />
-                                <p className="text-base font-bold text-zinc-200">Embedded Playback Restricted</p>
-                                <p className="text-xs text-zinc-500 mt-2 max-w-sm">
-                                    The video owner has disabled playback on external sites. You can still analyze it by clicking 'Start Analysis'.
+                                <AlertTriangle className="w-8 h-8 text-yellow-500 mb-2" />
+                                <p className="text-sm font-bold text-zinc-200">Playback Restricted</p>
+                                <p className="text-[10px] text-zinc-500 mt-1 max-w-xs">
+                                    Owner disabled embedded playback. Analysis still works.
                                 </p>
                                 {url && (
                                     <a 
                                         href={url} 
                                         target="_blank" 
                                         rel="noopener noreferrer"
-                                        className="mt-6 flex items-center gap-2 px-5 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold rounded-full transition-colors"
+                                        className="mt-4 flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-[10px] font-bold rounded-full transition-colors"
                                     >
-                                        <Youtube className="w-4 h-4" /> Watch on YouTube
-                                        <ExternalLink className="w-3 h-3 opacity-50" />
+                                        <Youtube className="w-3 h-3" /> Open in YouTube
                                     </a>
                                 )}
                             </div>
@@ -355,15 +358,12 @@ export const AnalysisView: React.FC = () => {
                                     playing={false}
                                     onError={(e: any) => {
                                         setPlayerError(true);
-                                        addLog(`Player Warning: Video restricted (Code ${e}). UI fallback active.`, "warning");
+                                        addLog(`Player Warning: Video restricted. UI fallback active.`, "warning");
                                     }}
                                     config={{ 
                                         youtube: { 
                                             playerVars: { 
-                                                showinfo: 0, 
-                                                modestbranding: 1, 
-                                                rel: 0,
-                                                origin: typeof window !== 'undefined' ? window.location.origin : undefined
+                                                showinfo: 0, modestbranding: 1, rel: 0, origin: typeof window !== 'undefined' ? window.location.origin : undefined
                                             } 
                                         } 
                                     }}
@@ -374,95 +374,86 @@ export const AnalysisView: React.FC = () => {
                         {/* Placeholder */}
                         {!(url || filePreviewUrl) && (
                              <div className="absolute inset-0 flex flex-col items-center justify-center text-zinc-700 bg-zinc-950">
-                                <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:32px_32px]"></div>
-                                <div className="relative w-24 h-24 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center mb-4 shadow-2xl animate-pulse-slow">
-                                    <Aperture className="w-10 h-10 text-zinc-600" />
+                                <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+                                <div className="relative w-16 h-16 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center mb-3 shadow-2xl animate-pulse-slow">
+                                    <Aperture className="w-8 h-8 text-zinc-600" />
                                 </div>
-                                <p className="text-xs font-mono font-medium text-zinc-500 uppercase tracking-widest z-10">System Idle • No Source</p>
+                                <p className="text-[10px] font-mono font-medium text-zinc-500 uppercase tracking-widest z-10">System Idle</p>
                             </div>
                         )}
 
-                        {/* AI Vision HUD Overlay */}
+                        {/* HUD Overlay */}
                         {showHud && (status === AnalysisStatus.PROCESSING || isCinemaMode) && (
                             <div className="absolute inset-0 pointer-events-none z-20 overflow-hidden">
-                                <div className="absolute top-4 left-4 w-8 h-8 border-t-2 border-l-2 border-poker-gold/50 rounded-tl-lg"></div>
-                                <div className="absolute top-4 right-4 w-8 h-8 border-t-2 border-r-2 border-poker-gold/50 rounded-tr-lg"></div>
-                                <div className="absolute bottom-4 left-4 w-8 h-8 border-b-2 border-l-2 border-poker-gold/50 rounded-bl-lg"></div>
-                                <div className="absolute bottom-4 right-4 w-8 h-8 border-b-2 border-r-2 border-poker-gold/50 rounded-br-lg"></div>
-                                
-                                <div className="absolute top-6 right-6 flex flex-col items-end gap-1">
-                                    <div className="flex items-center gap-2 bg-black/60 px-2 py-1 rounded backdrop-blur-sm border border-red-500/30">
+                                <div className="absolute top-4 right-4 flex flex-col items-end gap-1">
+                                    <div className="flex items-center gap-1.5 bg-black/60 px-2 py-1 rounded backdrop-blur-sm border border-red-500/30">
                                         <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></div>
-                                        <span className="text-[9px] font-mono font-bold text-red-500 tracking-widest uppercase">REC</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 bg-black/60 px-2 py-1 rounded backdrop-blur-sm border border-poker-gold/30">
-                                        <Activity className="w-3 h-3 text-poker-gold" />
-                                        <span className="text-[9px] font-mono font-bold text-poker-gold tracking-widest uppercase">VISION: ON</span>
+                                        <span className="text-[8px] font-mono font-bold text-red-500 tracking-widest uppercase">REC</span>
                                     </div>
                                 </div>
-
                                 {status === AnalysisStatus.PROCESSING && (
-                                     <div className="absolute top-0 left-0 w-full h-1 bg-poker-emerald/50 shadow-[0_0_20px_rgba(16,185,129,0.8)] animate-[scan_3s_linear_infinite] opacity-50"></div>
+                                     <div className="absolute top-0 left-0 w-full h-0.5 bg-poker-emerald/50 shadow-[0_0_20px_rgba(16,185,129,0.8)] animate-[scan_3s_linear_infinite] opacity-50"></div>
                                 )}
                             </div>
                         )}
 
                         {/* Floating Player Controls */}
-                        <div className="absolute bottom-6 right-6 z-30 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                             <button 
-                                onClick={() => setShowHud(!showHud)}
-                                className="p-2 bg-black/60 hover:bg-black/80 text-white rounded-lg backdrop-blur-md border border-white/10 transition-colors"
-                             >
-                                <Scan className="w-4 h-4" />
+                        <div className="absolute bottom-4 right-4 z-30 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                             <button onClick={() => setShowHud(!showHud)} className="p-1.5 bg-black/60 hover:bg-black/80 text-white rounded-lg backdrop-blur-md border border-white/10">
+                                <Scan className="w-3.5 h-3.5" />
                              </button>
-                             <button 
-                                onClick={() => setIsCinemaMode(!isCinemaMode)}
-                                className="p-2 bg-black/60 hover:bg-black/80 text-white rounded-lg backdrop-blur-md border border-white/10 transition-colors"
-                             >
-                                {isCinemaMode ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+                             <button onClick={() => setIsCinemaMode(!isCinemaMode)} className="p-1.5 bg-black/60 hover:bg-black/80 text-white rounded-lg backdrop-blur-md border border-white/10">
+                                {isCinemaMode ? <Minimize className="w-3.5 h-3.5" /> : <Maximize className="w-3.5 h-3.5" />}
                              </button>
                         </div>
                     </div>
                 </div>
 
-                {/* Real-time Extraction HUD */}
-                {(streamingContent || result) && (
-                    <div className="grid grid-cols-3 gap-4 animate-slide-up">
-                        <div className="bg-zinc-900/80 border border-zinc-800 p-4 rounded-2xl flex flex-col gap-1">
-                            <span className="text-[10px] text-zinc-500 font-bold uppercase flex items-center gap-1.5"><Eye className="w-3 h-3" /> Hero</span>
-                            <span className="text-white font-bold truncate">{extractedData.hero}</span>
-                        </div>
-                        <div className="bg-zinc-900/80 border border-zinc-800 p-4 rounded-2xl flex flex-col gap-1">
-                            <span className="text-[10px] text-zinc-500 font-bold uppercase flex items-center gap-1.5"><DollarSign className="w-3 h-3" /> Pot</span>
-                            <span className="text-poker-gold font-mono font-bold truncate">{extractedData.pot}</span>
-                        </div>
-                        <div className="bg-zinc-900/80 border border-zinc-800 p-4 rounded-2xl flex flex-col gap-1">
-                            <span className="text-[10px] text-zinc-500 font-bold uppercase flex items-center gap-1.5"><Layers className="w-3 h-3" /> Board</span>
-                            <div className="flex gap-1 overflow-hidden">
-                                {extractedData.board.length > 0 ? (
-                                    extractedData.board.map((c, i) => (
-                                        <span key={i} className="text-xs font-mono bg-white text-black px-1 rounded shadow-sm font-bold">{c}</span>
-                                    ))
-                                ) : <span className="text-zinc-600 text-xs italic">Pending...</span>}
+                {/* HUD Stats - Filling remaining vertical space */}
+                <div className="flex-1 min-h-0 bg-zinc-900/30 rounded-2xl border border-zinc-800/50 p-4 overflow-y-auto">
+                    {(streamingContent || result) ? (
+                        <div className="grid grid-cols-3 gap-3 animate-slide-up">
+                            <div className="bg-zinc-900/80 border border-zinc-800 p-3 rounded-xl flex flex-col gap-1">
+                                <span className="text-[9px] text-zinc-500 font-bold uppercase flex items-center gap-1.5"><Eye className="w-3 h-3" /> Hero</span>
+                                <span className="text-white font-bold truncate text-sm">{extractedData.hero}</span>
+                            </div>
+                            <div className="bg-zinc-900/80 border border-zinc-800 p-3 rounded-xl flex flex-col gap-1">
+                                <span className="text-[9px] text-zinc-500 font-bold uppercase flex items-center gap-1.5"><DollarSign className="w-3 h-3" /> Pot</span>
+                                <span className="text-poker-gold font-mono font-bold truncate text-sm">{extractedData.pot}</span>
+                            </div>
+                            <div className="bg-zinc-900/80 border border-zinc-800 p-3 rounded-xl flex flex-col gap-1">
+                                <span className="text-[9px] text-zinc-500 font-bold uppercase flex items-center gap-1.5"><Layers className="w-3 h-3" /> Board</span>
+                                <div className="flex gap-1 overflow-hidden h-5 items-center">
+                                    {extractedData.board.length > 0 ? (
+                                        extractedData.board.map((c, i) => (
+                                            <span key={i} className="text-[10px] font-mono bg-white text-black px-1 rounded shadow-sm font-bold">{c}</span>
+                                        ))
+                                    ) : <span className="text-zinc-600 text-[10px] italic">Pending...</span>}
+                                </div>
                             </div>
                         </div>
-                    </div>
-                )}
+                    ) : (
+                        <div className="h-full flex flex-col items-center justify-center text-zinc-700">
+                            <Activity className="w-8 h-8 mb-2 opacity-20" />
+                            <p className="text-xs font-medium">No live data extracted</p>
+                        </div>
+                    )}
+                </div>
             </div>
 
-            {/* RIGHT: Logs & Output */}
-            <div className="lg:col-span-3 flex flex-col gap-6 h-full min-h-[400px]">
-                <div className="flex-1 bg-[#0c0c0c] rounded-3xl border border-zinc-800 overflow-hidden flex flex-col shadow-xl">
-                    <div className="bg-zinc-900/50 px-4 py-3 border-b border-zinc-800 flex justify-between items-center">
-                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-2">
-                            <Terminal className="w-3 h-3" /> Logs
+            {/* RIGHT: Logs & Output - Independent Scroll */}
+            <div className="lg:col-span-3 flex flex-col h-full gap-4 overflow-hidden">
+                <div className="flex-1 bg-[#0c0c0c] rounded-2xl border border-zinc-800 overflow-hidden flex flex-col shadow-xl">
+                    <div className="bg-zinc-900/50 px-3 py-2.5 border-b border-zinc-800 flex justify-between items-center shrink-0">
+                        <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-2">
+                            <Terminal className="w-3 h-3" /> System Logs
                         </span>
-                        <div className="flex gap-1.5">
-                            <div className="w-2 h-2 rounded-full bg-zinc-700"></div>
-                            <div className="w-2 h-2 rounded-full bg-zinc-700"></div>
+                        <div className="flex gap-1">
+                            <div className="w-1.5 h-1.5 rounded-full bg-zinc-700"></div>
+                            <div className="w-1.5 h-1.5 rounded-full bg-zinc-700"></div>
                         </div>
                     </div>
-                    <div className="flex-1 overflow-y-auto p-4 font-mono text-[10px] space-y-1.5 scrollbar-thin scrollbar-thumb-zinc-800">
+                    <div className="flex-1 overflow-y-auto p-3 font-mono text-[9px] space-y-1 scrollbar-thin scrollbar-thumb-zinc-800">
                         {logs.map(log => (
                             <div key={log.id} className="flex gap-2 text-zinc-400">
                                 <span className="text-zinc-600 select-none">[{log.time}]</span>
@@ -477,50 +468,44 @@ export const AnalysisView: React.FC = () => {
                     </div>
                 </div>
 
-                {(result || streamingContent) && (
-                    <div className="bg-zinc-900 rounded-3xl border border-zinc-800 overflow-hidden flex flex-col h-1/3 min-h-[200px] shadow-xl animate-fade-in relative">
-                        <div className="px-4 py-3 border-b border-zinc-800 flex justify-between items-center bg-black/20">
-                            <span className="text-[10px] font-bold text-zinc-400 uppercase flex items-center gap-2">
-                                <FileText className="w-3 h-3" /> Raw Text
-                            </span>
-                            <div className="flex gap-2">
-                                <button 
-                                    onClick={() => {
-                                        const text = sanitizeHandHistory(result?.handHistory || streamingContent);
-                                        navigator.clipboard.writeText(text);
-                                        addLog('Copied to clipboard', 'success');
-                                    }} 
-                                    className="text-zinc-500 hover:text-white transition-colors"
-                                >
-                                    <Copy className="w-3 h-3" />
-                                </button>
-                                {status === AnalysisStatus.COMPLETE && (
-                                    <button onClick={handleSaveAndReview} className="text-poker-emerald hover:text-white transition-colors">
-                                        <Save className="w-3 h-3" />
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                        <div className="flex-1 relative bg-black/20 group">
-                            <div className="absolute inset-0 overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-zinc-800 hover:scrollbar-thumb-zinc-600 pb-16">
-                                <pre className="text-[10px] font-mono text-zinc-400 whitespace-pre-wrap font-medium leading-relaxed select-text">
-                                    {sanitizeHandHistory(result?.handHistory || streamingContent)}
-                                </pre>
-                            </div>
-                            {/* CTA Button */}
-                            {status === AnalysisStatus.COMPLETE && (
-                                <div className="absolute bottom-4 left-4 right-4 animate-slide-up">
-                                    <button 
-                                        onClick={handleSaveAndReview}
-                                        className="w-full py-3 bg-white hover:bg-zinc-200 text-black font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all hover:scale-[1.02]"
-                                    >
-                                        <PlayCircle className="w-4 h-4 fill-current" /> Save & Review Hand
-                                    </button>
-                                </div>
-                            )}
+                {/* Text Output Preview (Fixed small height) */}
+                <div className="h-1/3 min-h-[150px] shrink-0 bg-zinc-900 rounded-2xl border border-zinc-800 overflow-hidden flex flex-col shadow-xl relative">
+                    <div className="px-3 py-2 border-b border-zinc-800 flex justify-between items-center bg-black/20 shrink-0">
+                        <span className="text-[9px] font-bold text-zinc-400 uppercase flex items-center gap-2">
+                            <FileText className="w-3 h-3" /> Output
+                        </span>
+                        <div className="flex gap-1">
+                            <button 
+                                onClick={() => {
+                                    const text = sanitizeHandHistory(result?.handHistory || streamingContent);
+                                    navigator.clipboard.writeText(text);
+                                    addLog('Copied to clipboard', 'success');
+                                }} 
+                                className="text-zinc-500 hover:text-white p-1"
+                            >
+                                <Copy className="w-3 h-3" />
+                            </button>
                         </div>
                     </div>
-                )}
+                    <div className="flex-1 relative bg-black/20 group overflow-hidden">
+                        <div className="absolute inset-0 overflow-y-auto p-3 scrollbar-thin scrollbar-thumb-zinc-800">
+                            <pre className="text-[9px] font-mono text-zinc-400 whitespace-pre-wrap font-medium leading-relaxed select-text">
+                                {sanitizeHandHistory(result?.handHistory || streamingContent)}
+                            </pre>
+                        </div>
+                        {/* CTA Button Overlay */}
+                        {status === AnalysisStatus.COMPLETE && (
+                            <div className="absolute bottom-3 left-3 right-3 animate-slide-up">
+                                <button 
+                                    onClick={handleSaveAndReview}
+                                    className="w-full py-2 bg-white hover:bg-zinc-200 text-black text-xs font-bold rounded-lg shadow-lg flex items-center justify-center gap-2 transition-all hover:scale-[1.02]"
+                                >
+                                    <PlayCircle className="w-3.5 h-3.5 fill-current" /> Save & Review
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
         </div>
       </div>

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, createContext, useContext, useRef } from 'react';
 import { HistorySidebar } from './components/HistorySidebar';
 import { AnalysisView } from './components/AnalysisView';
@@ -59,10 +58,10 @@ const AppContent: React.FC = () => {
       width: `${100 / user.settings.appScale}vw`
   } : {};
 
-  // UI Density Class
-  const densityClass = user?.settings?.uiDensity === 'compact' ? 'space-y-1 p-2 text-xs' 
-                     : user?.settings?.uiDensity === 'spacious' ? 'space-y-8 p-8' 
-                     : ''; // Normal uses default classes in components
+  // UI Density Class - apply mostly to text size or inner padding, avoid layout breaking margins
+  const densityClass = user?.settings?.uiDensity === 'compact' ? 'text-xs' 
+                     : user?.settings?.uiDensity === 'spacious' ? '' 
+                     : ''; 
 
   if (!user) {
     return (
@@ -98,11 +97,11 @@ const AppContent: React.FC = () => {
     }
 
     return (
-        <div className="flex-1 p-6 lg:p-8 overflow-y-auto bg-background animate-fade-in scroll-smooth h-full">
-            <div className="max-w-[1600px] mx-auto space-y-6 h-full flex flex-col">
+        <div className="flex-1 p-4 lg:p-6 overflow-hidden bg-background animate-fade-in h-full flex flex-col">
+            <div className="max-w-[1920px] mx-auto w-full h-full flex flex-col gap-4">
                 
                 {/* Header */}
-                <div className="flex items-center justify-between shrink-0 bg-zinc-900/50 p-4 rounded-2xl border border-zinc-800/50 backdrop-blur-sm">
+                <div className="flex items-center justify-between shrink-0 bg-zinc-900/50 p-3 rounded-2xl border border-zinc-800/50 backdrop-blur-sm">
                      <div className="flex items-center gap-4">
                          <div className="p-2 bg-poker-gold/10 rounded-lg">
                             <PlayCircle className="w-5 h-5 text-poker-gold" />
@@ -133,13 +132,13 @@ const AppContent: React.FC = () => {
                 </div>
 
                 {/* Content */}
-                <div className="flex flex-col xl:flex-row gap-6 h-full pb-10 min-h-0">
-                    <div className="flex-1 min-h-[500px] xl:h-auto bg-black rounded-[2.5rem] shadow-2xl overflow-hidden ring-1 ring-white/5 relative">
+                <div className="flex flex-col xl:flex-row gap-4 flex-1 min-h-0">
+                    <div className="flex-1 bg-black rounded-[2rem] shadow-2xl overflow-hidden ring-1 ring-white/5 relative">
                          <HandReplayer hand={selectedHand} onAnalyzeSpot={analyzeSpot} />
                     </div>
 
-                    <div className="w-full xl:w-96 bg-surface rounded-3xl border border-border overflow-hidden shrink-0 flex flex-col shadow-xl">
-                         <div className="px-5 py-4 border-b border-border bg-zinc-900/80 backdrop-blur flex justify-between items-center">
+                    <div className="w-full xl:w-80 bg-surface rounded-3xl border border-border overflow-hidden shrink-0 flex flex-col shadow-xl h-48 xl:h-auto">
+                         <div className="px-4 py-3 border-b border-border bg-zinc-900/80 backdrop-blur flex justify-between items-center shrink-0">
                              <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
                                 <span className="w-1.5 h-1.5 rounded-full bg-poker-gold"></span> Raw History
                              </h3>
@@ -151,7 +150,7 @@ const AppContent: React.FC = () => {
                              </button>
                          </div>
                          <div className="flex-1 overflow-auto bg-[#0c0c0c] relative group">
-                             <pre className="p-5 text-[10px] font-mono text-zinc-400 leading-relaxed whitespace-pre-wrap selection:bg-poker-gold selection:text-black">
+                             <pre className="p-4 text-[10px] font-mono text-zinc-400 leading-relaxed whitespace-pre-wrap selection:bg-poker-gold selection:text-black">
                                  {selectedHand.rawText}
                              </pre>
                          </div>
@@ -196,33 +195,33 @@ const AppContent: React.FC = () => {
     <div style={appStyle} className="flex h-screen bg-background text-zinc-100 overflow-hidden font-sans selection:bg-poker-gold/30 selection:text-white transition-transform duration-300">
       
       {/* Left Sidebar (History) */}
-      <div className={`${leftSidebarOpen ? 'w-80 translate-x-0' : 'w-0 -translate-x-full opacity-0 overflow-hidden'} transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)] border-r border-border bg-surface flex flex-col shrink-0 relative z-30 shadow-2xl`}>
+      <div className={`${leftSidebarOpen ? 'w-72 translate-x-0' : 'w-0 -translate-x-full opacity-0 overflow-hidden'} transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)] border-r border-border bg-surface flex flex-col shrink-0 relative z-30 shadow-2xl`}>
          <HistorySidebar />
       </div>
 
       {/* Center Content */}
-      <div className="flex-1 flex flex-col min-w-0 bg-background relative z-0">
+      <div className="flex-1 flex flex-col min-w-0 bg-background relative z-0 h-full">
         
         {/* Navbar */}
-        <header className="h-16 px-4 md:px-6 border-b border-border/50 glass flex items-center justify-between shrink-0 sticky top-0 z-20 bg-background/80 backdrop-blur-xl">
+        <header className="h-14 px-4 border-b border-border/50 glass flex items-center justify-between shrink-0 sticky top-0 z-20 bg-background/80 backdrop-blur-xl">
             <div className="flex items-center gap-4">
                 <button 
                     onClick={() => setLeftSidebarOpen(!leftSidebarOpen)}
-                    className={`p-2 rounded-xl transition-all duration-200 border border-transparent ${!leftSidebarOpen ? 'bg-zinc-800 text-white border-zinc-700 shadow-sm' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'}`}
+                    className={`p-1.5 rounded-lg transition-all duration-200 border border-transparent ${!leftSidebarOpen ? 'bg-zinc-800 text-white border-zinc-700 shadow-sm' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'}`}
                     title="Toggle History"
                 >
-                    <Menu className="w-5 h-5" />
+                    <Menu className="w-4 h-4" />
                 </button>
                 
-                <div className="h-8 w-px bg-zinc-800/50 mx-2"></div>
+                <div className="h-6 w-px bg-zinc-800/50 mx-2"></div>
 
-                <nav className="flex items-center bg-zinc-900/50 p-1 rounded-xl border border-zinc-800/50">
+                <nav className="flex items-center bg-zinc-900/50 p-1 rounded-lg border border-zinc-800/50">
                     {[
                         { id: 'analyze', icon: Search, label: 'Vision' },
                         { id: 'review', icon: PlayCircle, label: 'Replayer' },
                         { id: 'channels', icon: Tv, label: 'Channels' },
                         { id: 'tracker', icon: LayoutDashboard, label: 'Tracker' },
-                        { id: 'trainer', icon: Target, label: 'Trainer' }, // Added Trainer
+                        { id: 'trainer', icon: Target, label: 'Trainer' },
                         { id: 'tools', icon: FlaskConical, label: 'Lab' },
                     ].map(item => (
                         <button
@@ -230,46 +229,45 @@ const AppContent: React.FC = () => {
                             onClick={() => { 
                               setViewMode(item.id as ViewMode); 
                             }}
-                            className={`relative flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-300 group overflow-hidden ${
+                            className={`relative flex items-center gap-2 px-3 py-1.5 rounded-md text-[11px] font-bold transition-all duration-300 group overflow-hidden ${
                                 viewMode === item.id 
                                 ? 'text-black bg-white shadow-lg shadow-white/10 scale-105' 
                                 : 'text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800'
                             }`}
                         >
-                            <item.icon className={`w-3.5 h-3.5 transition-colors ${viewMode === item.id ? 'text-black' : 'group-hover:text-zinc-200'}`} />
+                            <item.icon className={`w-3 h-3 transition-colors ${viewMode === item.id ? 'text-black' : 'group-hover:text-zinc-200'}`} />
                             <span className="hidden lg:block">{item.label}</span>
                         </button>
                     ))}
                 </nav>
             </div>
             
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
                 {/* Mobile Toggle for Right Sidebar */}
                 <button 
                     onClick={() => setRightSidebarOpen(!rightSidebarOpen)}
-                    className={`p-2 rounded-xl transition-all duration-200 md:hidden ${rightSidebarOpen ? 'text-poker-gold bg-zinc-800 shadow-md' : 'text-zinc-400 hover:text-white'}`}
+                    className={`p-1.5 rounded-lg transition-all duration-200 md:hidden ${rightSidebarOpen ? 'text-poker-gold bg-zinc-800 shadow-md' : 'text-zinc-400 hover:text-white'}`}
                 >
-                    <BrainCircuit className="w-5 h-5" />
+                    <BrainCircuit className="w-4 h-4" />
                 </button>
 
                 {user.subscription === 'free' && (
                     <button 
                         onClick={() => { setViewMode('pricing'); }}
-                        className="hidden md:flex text-xs font-bold bg-gradient-to-r from-zinc-900 to-black border border-zinc-800 text-white px-3 py-1.5 rounded-full hover:border-poker-gold/50 hover:shadow-[0_0_15px_rgba(251,191,36,0.2)] transition-all items-center gap-2 group"
+                        className="hidden md:flex text-[10px] font-bold bg-gradient-to-r from-zinc-900 to-black border border-zinc-800 text-white px-3 py-1.5 rounded-full hover:border-poker-gold/50 hover:shadow-[0_0_15px_rgba(251,191,36,0.2)] transition-all items-center gap-2 group"
                     >
-                        <Sparkles className="w-3 h-3 text-poker-gold group-hover:animate-pulse" /> Upgrade Plan
+                        <Sparkles className="w-3 h-3 text-poker-gold group-hover:animate-pulse" /> Upgrade
                     </button>
                 )}
 
                 <div className="h-6 w-px bg-zinc-800 hidden md:block"></div>
 
                 <div className="flex items-center gap-3 cursor-pointer group p-1 pr-3 rounded-xl hover:bg-zinc-900/50 transition-colors border border-transparent hover:border-zinc-800" onClick={() => { setViewMode('profile'); }}>
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-zinc-700 to-zinc-900 border border-zinc-600 flex items-center justify-center shadow-lg group-hover:border-poker-gold/50 transition-all">
-                        <UserIcon className="w-4 h-4 text-zinc-300 group-hover:text-white" />
+                    <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-zinc-700 to-zinc-900 border border-zinc-600 flex items-center justify-center shadow-lg group-hover:border-poker-gold/50 transition-all">
+                        <UserIcon className="w-3.5 h-3.5 text-zinc-300 group-hover:text-white" />
                     </div>
                     <div className="text-left hidden md:block">
                         <div className="text-xs font-bold text-zinc-200 group-hover:text-white transition-colors">{user.name}</div>
-                        <div className="text-[9px] text-zinc-500 font-medium uppercase tracking-wider">{user.subscription}</div>
                     </div>
                 </div>
             </div>
@@ -282,7 +280,7 @@ const AppContent: React.FC = () => {
       </div>
 
       {/* Right Sidebar (Global Coach) */}
-      <div className={`${rightSidebarOpen ? 'w-96 translate-x-0' : 'w-0 translate-x-full opacity-0 overflow-hidden'} transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)] border-l border-border bg-surface flex flex-col shrink-0 relative z-30 shadow-[0_0_50px_rgba(0,0,0,0.5)]`}>
+      <div className={`${rightSidebarOpen ? 'w-80 translate-x-0' : 'w-0 translate-x-full opacity-0 overflow-hidden'} transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)] border-l border-border bg-surface flex flex-col shrink-0 relative z-30 shadow-[0_0_50px_rgba(0,0,0,0.5)]`}>
           {rightSidebarOpen && (
               <div className="absolute top-4 -left-3 z-50">
                  <button 
@@ -298,13 +296,13 @@ const AppContent: React.FC = () => {
 
       {/* Toggle Open Button for Right Sidebar when closed */}
       {!rightSidebarOpen && (
-          <div className="absolute top-20 right-0 z-40">
+          <div className="absolute top-16 right-0 z-40">
               <button 
                   onClick={() => setRightSidebarOpen(true)}
-                  className="bg-zinc-900/90 backdrop-blur-md border-l border-t border-b border-zinc-700 text-poker-gold p-3 rounded-l-xl shadow-lg hover:pl-4 transition-all group"
+                  className="bg-zinc-900/90 backdrop-blur-md border-l border-t border-b border-zinc-700 text-poker-gold p-2 rounded-l-lg shadow-lg hover:pl-3 transition-all group"
                   title="Open Strategy Coach"
               >
-                  <BrainCircuit className="w-5 h-5 group-hover:animate-pulse" />
+                  <BrainCircuit className="w-4 h-4 group-hover:animate-pulse" />
               </button>
           </div>
       )}
@@ -313,36 +311,46 @@ const AppContent: React.FC = () => {
 };
 
 const App: React.FC = () => {
-  const [user, setUser] = useState<User | null>(getUser());
+  const [user, setUserState] = useState<User | null>(getUser());
   const [hands, setHands] = useState<HandHistory[]>([]);
   const [selectedHand, setSelectedHand] = useState<HandHistory | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('analyze');
   const [activeVideoUrl, setActiveVideoUrl] = useState<string | null>(null);
+  
+  // Queue state
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [isQueueProcessing, setIsQueueProcessing] = useState(false);
+  
+  // Toasts
   const [toasts, setToasts] = useState<Toast[]>([]);
+
+  // Lab context
   const [labContext, setLabContext] = useState<any>({});
 
+  // Load hands on mount
   useEffect(() => {
     setHands(getHands());
   }, []);
 
-  useEffect(() => {
-    if (user) saveUser(user);
+  const setUser = (u: User | null) => {
+    if (u) saveUser(u);
     else removeUser();
-  }, [user]);
+    setUserState(u);
+  };
 
-  const loadHands = () => setHands(getHands());
+  const loadHands = () => {
+    setHands(getHands());
+  };
 
   const addHand = (hand: HandHistory) => {
     setHands(prev => [hand, ...prev]);
   };
 
   const updateHand = (id: string, updates: Partial<HandHistory>) => {
-    updateHandService(id, updates);
-    setHands(prev => prev.map(h => h.id === id ? { ...h, ...updates } : h));
+    const updated = updateHandService(id, updates);
+    setHands(updated);
     if (selectedHand?.id === id) {
-        setSelectedHand(prev => prev ? { ...prev, ...updates } : null);
+      setSelectedHand(prev => prev ? { ...prev, ...updates } : null);
     }
   };
 
@@ -356,39 +364,38 @@ const App: React.FC = () => {
     setActiveVideoUrl(url);
     setViewMode('analyze');
   };
-
+  
   const analyzeSpot = (context: string) => {
-    window.dispatchEvent(new CustomEvent('analyze-spot', { detail: context }));
+     // Dispatch custom event for StrategyCoach to pick up
+     const event = new CustomEvent('analyze-spot', { detail: context });
+     window.dispatchEvent(event);
   };
 
   const addToQueue = (video: ChannelVideo) => {
-      const newItem: QueueItem = {
-          id: video.id,
-          videoUrl: video.url,
-          title: video.title,
-          thumbnail: video.thumbnail,
-          status: 'pending',
-          addedAt: Date.now()
-      };
-      
-      setQueue(prev => {
-          if (prev.some(i => i.id === newItem.id)) return prev;
-          return [...prev, newItem];
-      });
-
-      // Simulate processing
-      setTimeout(() => {
-          setQueue(prev => prev.map(i => i.id === newItem.id ? { ...i, status: 'processing' } : i));
-          setIsQueueProcessing(true);
-          
-          setTimeout(() => {
-            setQueue(prev => prev.map(i => i.id === newItem.id ? { ...i, status: 'completed' } : i));
-            setIsQueueProcessing(false);
-            addToast({ title: "Analysis Complete", description: "Video processed.", type: 'success' });
-          }, 3000);
-      }, 1000);
+     const newItem: QueueItem = {
+         id: video.id,
+         videoUrl: video.url,
+         title: video.title,
+         thumbnail: video.thumbnail,
+         status: 'pending',
+         addedAt: Date.now()
+     };
+     setQueue(prev => [...prev, newItem]);
+     addToast({ title: "Added to Queue", description: video.title, type: 'info' });
+     
+     // Simulate processing
+     setTimeout(() => {
+         setQueue(q => q.map(i => i.id === video.id ? { ...i, status: 'processing' } : i));
+         setIsQueueProcessing(true);
+         
+         setTimeout(() => {
+             setQueue(q => q.map(i => i.id === video.id ? { ...i, status: 'completed' } : i));
+             setIsQueueProcessing(false);
+             addToast({ title: "Processing Complete", description: video.title, type: 'success' });
+         }, 3000);
+     }, 1000);
   };
-
+  
   const removeFromQueue = (id: string) => {
       setQueue(prev => prev.filter(i => i.id !== id));
   };
@@ -402,25 +409,40 @@ const App: React.FC = () => {
       setToasts(prev => prev.filter(t => t.id !== id));
   };
 
-  const clearAllData = () => {
+  const clearAllDataHandler = () => {
       clearDatabase();
       setHands([]);
       setSelectedHand(null);
-      addToast({ title: "Data Cleared", type: 'info' });
+      addToast({ title: "Database Cleared", type: 'info' });
+  };
+
+  const contextValue: PokerContextType = {
+    user,
+    setUser,
+    hands,
+    loadHands,
+    addHand,
+    updateHand,
+    deleteHand,
+    selectedHand,
+    setSelectedHand,
+    viewMode,
+    setViewMode,
+    activeVideoUrl,
+    launchAnalysis,
+    analyzeSpot,
+    queue,
+    addToQueue,
+    removeFromQueue,
+    isQueueProcessing,
+    addToast,
+    clearAllData: clearAllDataHandler,
+    labContext,
+    setLabContext
   };
 
   return (
-    <PokerContext.Provider value={{
-      user, setUser,
-      hands, loadHands, addHand, updateHand, deleteHand,
-      selectedHand, setSelectedHand,
-      viewMode, setViewMode,
-      activeVideoUrl, launchAnalysis, analyzeSpot,
-      queue, addToQueue, removeFromQueue, isQueueProcessing,
-      addToast,
-      clearAllData,
-      labContext, setLabContext
-    }}>
+    <PokerContext.Provider value={contextValue}>
       <AppContent />
       <ToastContainer toasts={toasts} removeToast={removeToast} />
     </PokerContext.Provider>

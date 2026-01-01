@@ -7,8 +7,6 @@ export const fileToGenerativePart = async (file: File): Promise<string> => {
     const reader = new FileReader();
     reader.onloadend = () => {
       const base64String = reader.result as string;
-      // Depending on the browser, result might be "data:video/mp4;base64,..."
-      // We need just the base64 part.
       const base64 = base64String.split(',')[1] || base64String;
       resolve(base64);
     };
@@ -17,21 +15,29 @@ export const fileToGenerativePart = async (file: File): Promise<string> => {
   });
 };
 
-const HAND_PARSER_INSTRUCTION = `
-You are an expert Poker Hand History Transcriber for 'Hustler Casino Live' (HCL). 
+const GENERIC_INSTRUCTION = `
+You are an expert Poker Hand History Transcriber. 
 Your task is to watch the video clip and output a text block in PokerStars Hand History format.
+`;
 
-VISUAL CUES TO TRACK:
-1. **The Board**: Identify Flop, Turn, and River cards as they are dealt.
-2. **The Players**: Identify Hero (active player) and Villains based on the on-screen graphics (Nameplates, Stacks).
-3. **The Action**: Watch the chips moving and the on-screen action indicators (Check, Bet, Raise, Fold).
-4. **Hole Cards**: Extract the RFID graphics for hole cards.
+const HCL_INSTRUCTION = `
+You are a specialized 'Hustler Casino Live' (HCL) Hand History Transcriber.
+Your goal is to convert the video footage into a perfectly formatted PokerStars Hand History text block.
 
-FORMATTING RULES:
-- Return ONLY the raw PokerStars Hand History text.
-- Do not use Markdown formatting (no \`\`\`).
-- If exact stack sizes are unclear, estimate based on the on-screen graphics.
-- Use a generic Tournament/Cash Game header if specific ID is missing.
+### VISUAL RECOGNITION PROTOCOL (HCL):
+1. **Overlays**: Identify players by the nameplates (usually black/blue boxes). Stack sizes are in USD ($).
+2. **Active Player**: Look for the golden/yellow border or highlight around a player's graphic.
+3. **The Board**: Community cards (Flop/Turn/River) appear as digital overlays in the center or bottom center.
+4. **Hole Cards**: Use the RFID graphics (usually near player names) to identify cards.
+5. **Pot Size**: Track the total pot displayed in the center graphic.
+
+### FORMATTING RULES:
+- **Header**: "PokerStars Hand #<RandomID>: Hold'em No Limit ($<SB>/$<BB> USD) - <Date>"
+- **Table**: "Table 'Hustler Live' 9-max Seat #1 is the button"
+- **Seats**: "Seat 1: PlayerName ($Stack in chips)"
+- **Action**: Use standard terms: "folds", "calls $X", "raises $X to $Y", "bets $X".
+- **Hero**: If a specific player's cards are visible and the camera focuses on them, treat them as Hero (Dealt to Hero [Xx Xx]). If all cards are visible (stream view), you can pick the winner or the most active player as Hero, or just list all cards in summary.
+- **Output**: ONLY the raw text block. No markdown, no commentary.
 `;
 
 const COACH_TOOLS: Tool[] = [{
@@ -61,6 +67,7 @@ const REASONING_MODEL = "gemini-3-pro-preview"; // Best for complex reasoning/te
 export const analyzePokerVideo = async (
   videoFile: File | null, 
   youtubeUrl: string,
+  siteFormat: string,
   progressCallback: (msg: string) => void,
   streamCallback?: (text: string) => void
 ): Promise<AnalysisResult> => {
@@ -68,7 +75,12 @@ export const analyzePokerVideo = async (
   
   let model = VIDEO_MODEL;
   let parts: Part[] = [];
-  let config: any = { systemInstruction: HAND_PARSER_INSTRUCTION };
+  
+  // Select specialized instruction based on format
+  const isHCL = siteFormat.includes("Hustler");
+  const systemInstruction = isHCL ? HCL_INSTRUCTION : GENERIC_INSTRUCTION;
+  
+  let config: any = { systemInstruction };
 
   if (videoFile) {
     // --- REAL VIDEO ANALYSIS (MULTIMODAL) ---
@@ -76,17 +88,22 @@ export const analyzePokerVideo = async (
     const base64Data = await fileToGenerativePart(videoFile);
     
     parts = [
-        { text: "Analyze this poker video clip. Extract the hand history exactly as it happened." },
+        { text: isHCL 
+            ? "Analyze this HCL video clip. Extract the hand history strictly following PokerStars format. Pay attention to the HCL overlays for stack sizes and actions." 
+            : "Analyze this poker video clip. Extract the hand history exactly as it happened." 
+        },
         { inlineData: { mimeType: videoFile.type, data: base64Data } }
     ];
-    model = VIDEO_MODEL; // 1.5 Pro is superior for video token handling
+    model = VIDEO_MODEL; 
   } else if (youtubeUrl) {
     // --- URL TEXT/SEARCH ANALYSIS ---
-    // Since we cannot download YouTube videos client-side due to CORS, we use the Search Tool
-    // to find details about this hand if it's a famous HCL clip, or analyze the URL metadata.
-    progressCallback("Analyzing via Search Grounding (Video File Recommended for Vision)...");
+    progressCallback(`Analyzing URL (${siteFormat} Protocol)...`);
     
-    parts = [{ text: `Find the poker hand history for this video URL: ${youtubeUrl}. If you can't watch it directly, search for the hand details based on the video ID or title and reconstruct the hand history.` }];
+    const prompt = isHCL 
+        ? `Find the poker hand history for this Hustler Casino Live video URL: ${youtubeUrl}. search for the hand details (players, stacks, cards, action) and reconstruct a PokerStars Hand History format text block. The video is likely a famous HCL hand.`
+        : `Find the poker hand history for this video URL: ${youtubeUrl}. If you can't watch it directly, search for the hand details based on the video ID or title and reconstruct the hand history.`;
+
+    parts = [{ text: prompt }];
     model = REASONING_MODEL;
     
     // Enable Search Grounding for URL analysis
@@ -140,7 +157,7 @@ export const generateQueryFromNaturalLanguage = async (nlQuery: string): Promise
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     try {
         const response = await ai.models.generateContent({
-            model: "gemini-3-flash-preview", // Fast model for simple translation
+            model: "gemini-3-flash-preview", 
             contents: [{ parts: [{ text: `Convert this natural language request into a specific SQL-like WHERE clause for poker hand filtering. Fields: win (number), hand (e.g. "AKs"), pos (string), pot (number), action (string). Input: "${nlQuery}". Output ONLY the raw string, e.g. "win > 100 AND hand = 'AA'".` }] }]
         });
         return response.text?.trim() || "";
