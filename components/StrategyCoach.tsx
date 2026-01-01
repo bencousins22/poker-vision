@@ -86,7 +86,7 @@ export const StrategyCoach: React.FC = () => {
           
           if (functionCalls && functionCalls.length > 0) {
               // Handle Tools
-              const toolCallsData = [];
+              const toolCallsData: { name: string; args: any }[] = [];
               
               for (const call of functionCalls) {
                   toolCallsData.push({ name: call.name, args: call.args });

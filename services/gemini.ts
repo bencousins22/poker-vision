@@ -45,7 +45,8 @@ export const analyzePokerVideo = async (
   progressCallback: (msg: string) => void,
   streamCallback?: (text: string) => void
 ): Promise<AnalysisResult> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+  // Correct initialization following @google/genai guidelines
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   let parts: Part[] = [];
   if (videoFile) {
@@ -83,7 +84,8 @@ export const analyzePokerVideo = async (
 };
 
 export const getCoachChat = (systemContext: string) => {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+    // Correct initialization following @google/genai guidelines
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     return ai.chats.create({
         model: MODEL_NAME,
         config: {
@@ -94,7 +96,8 @@ export const getCoachChat = (systemContext: string) => {
 };
 
 export const generateQueryFromNaturalLanguage = async (nlQuery: string): Promise<string> => {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+    // Correct initialization following @google/genai guidelines
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     try {
         const response = await ai.models.generateContent({
             model: "gemini-3-flash-preview",

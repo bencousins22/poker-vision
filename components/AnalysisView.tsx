@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { AnalysisResult, AnalysisStatus } from '../types';
 import { analyzePokerVideo } from '../services/gemini';
@@ -28,6 +27,10 @@ export const AnalysisView: React.FC = () => {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logsEndRef = useRef<HTMLDivElement>(null);
+
+  // Fix: Cast ReactPlayer to any to avoid internal library type definition conflicts
+  // where it is sometimes incorrectly inferred as a native HTMLVideoElement.
+  const Player = ReactPlayer as any;
 
   useEffect(() => {
     if (activeVideoUrl) {
@@ -341,13 +344,13 @@ export const AnalysisView: React.FC = () => {
                         {/* React Player Instance */}
                         {(url || filePreviewUrl) && !playerError && (
                             <div className="w-full h-full relative z-10 bg-black">
-                                <ReactPlayer
+                                <Player
                                     url={filePreviewUrl || url}
                                     width="100%"
                                     height="100%"
                                     controls={true}
                                     playing={false}
-                                    onError={(e) => {
+                                    onError={(e: any) => {
                                         // Suppress common YouTube restriction error codes from console if possible, but mostly handle UI
                                         setPlayerError(true);
                                         addLog(`Player Warning: Video restricted (Code ${e}). UI fallback active.`, "warning");
