@@ -77,17 +77,6 @@ export const parseHeroHandDetails = (hand: HandHistory) => {
     let netWin = 0;
     const heroName = hand.hero;
     
-    // Parse total pot won or lost
-    // Check if hero won
-    const winLine = lines.find(l => l.includes(`${heroName} collected`) || l.includes(`${heroName} won`));
-    
-    // Calculate investment (rough)
-    // This is hard to do perfectly with regex without full parsing, 
-    // so we will rely on a simplified assumption: 
-    // NetWin = Won Amount - (Pot Size / 2) if won, else - (Pot Size / NumPlayers)
-    // For a cleaner approach, we'd need to sum all 'bet'/'call' actions.
-    
-    // Improving extraction logic:
     let investment = 0;
     lines.forEach(l => {
         if (l.startsWith(heroName)) {
@@ -98,6 +87,7 @@ export const parseHeroHandDetails = (hand: HandHistory) => {
         }
     });
 
+    const winLine = lines.find(l => l.includes(`${heroName} collected`) || l.includes(`${heroName} won`));
     if (winLine) {
         const match = winLine.match(/\(\$([\d,]+)\)/);
         if (match) {
@@ -109,29 +99,23 @@ export const parseHeroHandDetails = (hand: HandHistory) => {
     }
 
     // Determine Position (BTN/SB/BB/EP/MP/CO)
-    // Find Button Seat
     let buttonSeat = 1;
     const btnLine = lines.find(l => l.includes('is the button'));
     if (btnLine) buttonSeat = parseInt(btnLine.match(/Seat #(\d+)/)?.[1] || '1');
     
-    // Find Hero Seat
     let heroSeat = 0;
     const seatLine = lines.find(l => l.includes(`: ${heroName} (`));
     if (seatLine) heroSeat = parseInt(seatLine.match(/Seat (\d+):/)?.[1] || '0');
 
     let position = 'MP'; // Default
     if (heroSeat > 0) {
-        // Simple relative position logic for 9-max
         const dist = (heroSeat - buttonSeat + 9) % 9;
         if (dist === 0) position = 'BTN';
         else if (dist === 1) position = 'SB';
         else if (dist === 2) position = 'BB';
-        else if (dist === 3) position = 'EP'; // UTG
-        else if (dist === 4) position = 'EP'; // UTG+1
-        else if (dist === 5) position = 'MP';
-        else if (dist === 6) position = 'MP';
-        else if (dist === 7) position = 'CO'; // HJ
-        else if (dist === 8) position = 'CO'; 
+        else if (dist === 3 || dist === 4) position = 'EP';
+        else if (dist === 5 || dist === 6) position = 'MP';
+        else if (dist === 7 || dist === 8) position = 'CO'; 
     }
 
     return { heroCards, netWin, position };
@@ -290,6 +274,12 @@ const processHandText = (hand: HandHistory, playerMap: Map<string, PlayerStats>,
         const p = playerMap.get(name)!;
         p.handsPlayed++;
         if (wentToShowdown.has(name)) p.wtsd++;
+        
+        // Track Positional Counts
+        const pos = positions.get(name) as keyof typeof p.positionStats;
+        if (pos && p.positionStats[pos] !== undefined) {
+            p.positionStats[pos]++;
+        }
     });
 };
 

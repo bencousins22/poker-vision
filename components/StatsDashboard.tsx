@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { 
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-    AreaChart, Area, BarChart, Bar, Legend, ReferenceLine, Brush, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar 
+    AreaChart, Area, BarChart, Bar, Cell, Legend, ReferenceLine, Brush, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar 
 } from 'recharts';
 
 // --- Utility Components ---
@@ -74,7 +74,7 @@ const KPICard = ({ label, value, subtext, icon: Icon, trend, color = "emerald" }
 
 // --- Sub-Views ---
 
-const OverviewTab = ({ hands, stats }: { hands: HandHistory[], stats: PlayerStats[] }) => {
+const OverviewTab = ({ hands, stats, timeFilter, setTimeFilter }: any) => {
     const heroStats = stats[0];
     const sessions = useMemo(() => calculateSessions(hands), [hands]);
     
@@ -103,10 +103,19 @@ const OverviewTab = ({ hands, stats }: { hands: HandHistory[], stats: PlayerStat
         });
     }, [hands]);
 
+    // Positional Data
+    const positionData = useMemo(() => {
+        if (!heroStats) return [];
+        return Object.entries(heroStats.positionWinnings).map(([pos, val]) => ({
+            pos,
+            val: val as number
+        }));
+    }, [heroStats]);
+
     // Heatmap Data
     const heatmapData = useMemo(() => {
         const map = new Map<string, number>();
-        hands.forEach(h => {
+        hands.forEach((h: HandHistory) => {
             const { heroCards, netWin } = parseHeroHandDetails(h);
             const key = getHoleCardsKey(heroCards);
             if (key) map.set(key, (map.get(key) || 0) + netWin);
@@ -118,6 +127,21 @@ const OverviewTab = ({ hands, stats }: { hands: HandHistory[], stats: PlayerStat
 
     return (
         <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500 pb-10">
+            {/* Control Bar */}
+            <div className="flex justify-end">
+                <div className="bg-zinc-900 p-1 rounded-lg border border-zinc-800 flex text-[10px] font-bold">
+                    {['all', 'month', 'week', 'day'].map((tf) => (
+                        <button
+                            key={tf}
+                            onClick={() => setTimeFilter(tf)}
+                            className={`px-3 py-1.5 rounded-md uppercase transition-all ${timeFilter === tf ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
+                        >
+                            {tf}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
             {/* KPI Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <KPICard 
@@ -158,7 +182,7 @@ const OverviewTab = ({ hands, stats }: { hands: HandHistory[], stats: PlayerStat
                 <div className="lg:col-span-2 bg-[#121214] border border-zinc-800 rounded-xl p-6 shadow-sm min-h-[400px] flex flex-col">
                     <div className="flex justify-between items-center mb-6">
                         <h3 className="font-bold text-white flex items-center gap-2 text-sm">
-                            <TrendingUp className="w-4 h-4 text-poker-gold" /> Performance Graph
+                            <TrendingUp className="w-4 h-4 text-poker-gold" /> Profit Timeline
                         </h3>
                         <div className="flex gap-2 text-[10px] font-bold">
                             <span className="flex items-center gap-1 text-emerald-400"><div className="w-2 h-2 rounded-full bg-emerald-400"></div> Total</span>
@@ -198,9 +222,8 @@ const OverviewTab = ({ hands, stats }: { hands: HandHistory[], stats: PlayerStat
                 <div className="bg-[#121214] border border-zinc-800 rounded-xl p-5 flex flex-col shadow-sm">
                     <div className="flex justify-between items-center mb-4">
                         <h3 className="font-bold text-white flex items-center gap-2 text-sm">
-                            <Grid3X3 className="w-4 h-4 text-poker-gold" /> Starting Hands
+                            <Grid3X3 className="w-4 h-4 text-poker-gold" /> Hand Heatmap
                         </h3>
-                        <span className="text-[10px] text-zinc-500 font-mono bg-zinc-900 px-2 py-1 rounded">Net Won</span>
                     </div>
                     
                     <div className="flex-1 flex items-center justify-center">
@@ -235,44 +258,70 @@ const OverviewTab = ({ hands, stats }: { hands: HandHistory[], stats: PlayerStat
                 </div>
             </div>
 
-            {/* Recent Sessions List */}
-            <div className="bg-[#121214] border border-zinc-800 rounded-xl overflow-hidden">
-                <div className="p-4 border-b border-zinc-800 flex justify-between items-center">
-                    <h3 className="font-bold text-white flex items-center gap-2 text-sm">
-                        <History className="w-4 h-4 text-zinc-400" /> Recent Sessions
-                    </h3>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Position Chart */}
+                <div className="bg-[#121214] border border-zinc-800 rounded-xl p-5 shadow-sm min-h-[300px] flex flex-col">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="font-bold text-white flex items-center gap-2 text-sm">
+                            <Crosshair className="w-4 h-4 text-poker-gold" /> Winrate by Position
+                        </h3>
+                    </div>
+                    <div className="flex-1 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={positionData}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+                                <XAxis dataKey="pos" tick={{fontSize: 10, fill: '#71717a', fontWeight: 'bold'}} axisLine={false} tickLine={false} />
+                                <YAxis hide />
+                                <Tooltip cursor={{fill: '#27272a'}} content={<CustomTooltip formatter={(v: number) => `$${v}`} />} />
+                                <Bar dataKey="val" fill="#10b981" radius={[4, 4, 0, 0]}>
+                                    {positionData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.val >= 0 ? '#10b981' : '#ef4444'} />
+                                    ))}
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
                 </div>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
-                        <thead className="bg-zinc-900/50 text-zinc-500 font-bold uppercase tracking-wider">
-                            <tr>
-                                <th className="p-4">Date</th>
-                                <th className="p-4">Duration</th>
-                                <th className="p-4">Hands</th>
-                                <th className="p-4">Stakes</th>
-                                <th className="p-4">Hourly</th>
-                                <th className="p-4 text-right">Result</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-zinc-800/50 text-zinc-300">
-                            {sessions.length === 0 ? (
-                                <tr><td colSpan={6} className="p-8 text-center text-zinc-500">No sessions recorded yet.</td></tr>
-                            ) : (
-                                sessions.slice(0, 5).map(session => (
-                                    <tr key={session.id} className="hover:bg-zinc-900/30 transition-colors">
-                                        <td className="p-4">{new Date(session.startTime).toLocaleDateString()}</td>
-                                        <td className="p-4">{session.durationMinutes.toFixed(0)}m</td>
-                                        <td className="p-4">{session.handsPlayed}</td>
-                                        <td className="p-4 font-mono text-zinc-400">{session.mostPlayedStakes}</td>
-                                        <td className="p-4 font-mono">${session.hourlyRate.toFixed(0)}/hr</td>
-                                        <td className={`p-4 text-right font-bold font-mono ${session.netWon >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                            {session.netWon >= 0 ? '+' : ''}${session.netWon.toLocaleString()}
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
+
+                {/* Recent Sessions List */}
+                <div className="lg:col-span-2 bg-[#121214] border border-zinc-800 rounded-xl overflow-hidden">
+                    <div className="p-4 border-b border-zinc-800 flex justify-between items-center">
+                        <h3 className="font-bold text-white flex items-center gap-2 text-sm">
+                            <History className="w-4 h-4 text-zinc-400" /> Recent Sessions
+                        </h3>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs">
+                            <thead className="bg-zinc-900/50 text-zinc-500 font-bold uppercase tracking-wider">
+                                <tr>
+                                    <th className="p-4">Date</th>
+                                    <th className="p-4">Duration</th>
+                                    <th className="p-4">Hands</th>
+                                    <th className="p-4">Stakes</th>
+                                    <th className="p-4">Hourly</th>
+                                    <th className="p-4 text-right">Result</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-zinc-800/50 text-zinc-300">
+                                {sessions.length === 0 ? (
+                                    <tr><td colSpan={6} className="p-8 text-center text-zinc-500">No sessions recorded yet.</td></tr>
+                                ) : (
+                                    sessions.slice(0, 5).map(session => (
+                                        <tr key={session.id} className="hover:bg-zinc-900/30 transition-colors">
+                                            <td className="p-4">{new Date(session.startTime).toLocaleDateString()}</td>
+                                            <td className="p-4">{session.durationMinutes.toFixed(0)}m</td>
+                                            <td className="p-4">{session.handsPlayed}</td>
+                                            <td className="p-4 font-mono text-zinc-400">{session.mostPlayedStakes}</td>
+                                            <td className="p-4 font-mono">${session.hourlyRate.toFixed(0)}/hr</td>
+                                            <td className={`p-4 text-right font-bold font-mono ${session.netWon >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                                {session.netWon >= 0 ? '+' : ''}${session.netWon.toLocaleString()}
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -528,9 +577,23 @@ const HandListTab = ({ hands, onReview }: { hands: HandHistory[], onReview: (h: 
 export const StatsDashboard: React.FC = () => {
     const { hands, setViewMode, setSelectedHand } = usePoker();
     const [activeTab, setActiveTab] = useState<'overview' | 'opponents' | 'leaks' | 'hands'>('overview');
+    const [timeFilter, setTimeFilter] = useState<'all' | 'month' | 'week' | 'day'>('all');
     
-    // Derived State
-    const stats = useMemo(() => calculateStats(hands), [hands]);
+    // Filtered Hands State
+    const filteredHands = useMemo(() => {
+        if (timeFilter === 'all') return hands;
+        const now = Date.now();
+        const oneDay = 24 * 60 * 60 * 1000;
+        let limit = 0;
+        if (timeFilter === 'day') limit = now - oneDay;
+        else if (timeFilter === 'week') limit = now - (7 * oneDay);
+        else if (timeFilter === 'month') limit = now - (30 * oneDay);
+        
+        return hands.filter(h => h.timestamp > limit);
+    }, [hands, timeFilter]);
+
+    // Derived Stats
+    const stats = useMemo(() => calculateStats(filteredHands), [filteredHands]);
     const heroStats = stats[0] || null;
     const leaks = useMemo(() => heroStats ? analyzeLeaks(heroStats) : [], [heroStats]);
 
@@ -543,7 +606,7 @@ export const StatsDashboard: React.FC = () => {
                         <Activity className="text-poker-gold w-6 h-6" /> Tracker Pro
                     </h1>
                     <p className="text-zinc-500 text-xs mt-1 font-medium">
-                        Database: <span className="text-zinc-300">{hands.length}</span> hands processed
+                        Database: <span className="text-zinc-300">{filteredHands.length}</span> hands processed
                     </p>
                 </div>
 
@@ -572,7 +635,13 @@ export const StatsDashboard: React.FC = () => {
             {/* Content Area */}
             <div className="flex-1 overflow-y-auto p-8 scrollbar-thin scrollbar-thumb-zinc-800">
                 <div className="max-w-[1600px] mx-auto min-h-full">
-                    {hands.length === 0 ? (
+                    {filteredHands.length === 0 && hands.length > 0 ? (
+                         <div className="flex flex-col items-center justify-center h-[50vh] text-zinc-600">
+                            <Search className="w-16 h-16 opacity-20 mb-4" />
+                            <h3 className="text-lg font-bold text-white">No hands in this period</h3>
+                            <p className="text-sm mt-2">Try adjusting the time filter.</p>
+                        </div>
+                    ) : filteredHands.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-[50vh] text-zinc-600 border border-zinc-800 border-dashed rounded-3xl bg-[#09090b]">
                             <Layers className="w-16 h-16 opacity-20 mb-4" />
                             <h3 className="text-lg font-bold text-white">Empty Database</h3>
@@ -580,10 +649,10 @@ export const StatsDashboard: React.FC = () => {
                         </div>
                     ) : (
                         <>
-                            {activeTab === 'overview' && <OverviewTab hands={hands} stats={stats} />}
+                            {activeTab === 'overview' && <OverviewTab hands={filteredHands} stats={stats} timeFilter={timeFilter} setTimeFilter={setTimeFilter} />}
                             {activeTab === 'opponents' && <VillainTab stats={stats} />}
                             {activeTab === 'leaks' && <LeaksTab leaks={leaks} />}
-                            {activeTab === 'hands' && <HandListTab hands={hands} onReview={(h) => { setSelectedHand(h); setViewMode('review'); }} />}
+                            {activeTab === 'hands' && <HandListTab hands={filteredHands} onReview={(h) => { setSelectedHand(h); setViewMode('review'); }} />}
                         </>
                     )}
                 </div>
