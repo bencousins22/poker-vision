@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Play, TrendingUp, Shield, Cpu, ChevronRight, BarChart3, Video } from 'lucide-react';
+import { Play, ChevronRight, BarChart3, Video, Cpu, Sparkles, CheckCircle2, Globe2, ShieldCheck, Zap } from 'lucide-react';
 
 interface Props {
   onLogin: () => void;
@@ -8,105 +8,177 @@ interface Props {
 
 export const LandingPage: React.FC<Props> = ({ onLogin }) => {
   return (
-    <div className="min-h-screen bg-gray-950 text-white overflow-x-hidden">
+    <div className="min-h-screen bg-[#050505] text-white selection:bg-poker-gold/30 selection:text-white overflow-x-hidden font-sans">
+      
       {/* Navbar */}
-      <nav className="fixed top-0 w-full z-50 bg-gray-950/80 backdrop-blur-md border-b border-gray-800">
+      <nav className="fixed top-0 w-full z-50 bg-[#050505]/80 backdrop-blur-xl border-b border-white/5">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-poker-gold to-yellow-600 rounded flex items-center justify-center font-bold text-black">
-              L
+          <div className="flex items-center gap-3">
+            <div className="relative group">
+                <div className="absolute inset-0 bg-poker-gold blur rounded-lg opacity-50 group-hover:opacity-100 transition-opacity"></div>
+                <div className="relative w-10 h-10 bg-gradient-to-br from-poker-gold to-yellow-600 rounded-xl flex items-center justify-center font-black text-black text-xl shadow-xl">
+                L
+                </div>
             </div>
-            <span className="font-bold text-xl tracking-tight">Live Poker Pro</span>
+            <span className="font-bold text-lg tracking-tight text-white/90">Live Poker Pro</span>
           </div>
-          <div className="flex items-center gap-6">
-            <button className="text-gray-400 hover:text-white transition-colors text-sm font-medium">Features</button>
-            <button className="text-gray-400 hover:text-white transition-colors text-sm font-medium">Pricing</button>
+          <div className="hidden md:flex items-center gap-8">
+            <button className="text-sm font-medium text-zinc-400 hover:text-white transition-colors">Features</button>
+            <button className="text-sm font-medium text-zinc-400 hover:text-white transition-colors">Pricing</button>
+            <button className="text-sm font-medium text-zinc-400 hover:text-white transition-colors">Testimonials</button>
+          </div>
+          <div className="flex items-center gap-4">
             <button 
               onClick={onLogin}
-              className="px-5 py-2.5 bg-white text-black font-bold rounded-full hover:bg-gray-200 transition-all text-sm"
+              className="text-sm font-bold text-white hover:text-poker-gold transition-colors hidden sm:block"
             >
-              Sign In
+              Log In
+            </button>
+            <button 
+              onClick={onLogin}
+              className="px-6 py-2.5 bg-white hover:bg-zinc-200 text-black font-bold rounded-full transition-all text-sm shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_30px_rgba(255,255,255,0.2)] hover:scale-105 active:scale-95"
+            >
+              Get Started
             </button>
           </div>
         </div>
       </nav>
 
       {/* Hero Section */}
-      <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-poker-green/20 rounded-full blur-[120px] pointer-events-none"></div>
+      <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden flex flex-col items-center justify-center min-h-[90vh]">
         
-        <div className="max-w-7xl mx-auto px-6 relative z-10 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gray-900 border border-gray-700 text-poker-gold text-xs font-mono mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-poker-gold opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-poker-gold"></span>
+        {/* Background Effects */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-poker-gold/10 rounded-full blur-[120px] pointer-events-none mix-blend-screen"></div>
+        <div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-poker-emerald/10 rounded-full blur-[120px] pointer-events-none mix-blend-screen"></div>
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.03]"></div>
+        
+        <div className="max-w-5xl mx-auto px-6 relative z-10 text-center flex flex-col items-center">
+          
+          {/* New Badge: Powered by Aussie Agents */}
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-900/80 border border-poker-gold/20 text-poker-gold text-xs font-bold uppercase tracking-widest mb-10 shadow-[0_0_25px_-5px_rgba(251,191,36,0.15)] animate-in fade-in slide-in-from-bottom-4 duration-1000 backdrop-blur-md hover:border-poker-gold/40 transition-colors cursor-default select-none">
+            <Sparkles className="w-3 h-3 animate-pulse" /> 
+            <span className="bg-clip-text text-transparent bg-gradient-to-r from-poker-gold via-yellow-200 to-poker-gold">
+                Powered by Aussie Agents
             </span>
-            v2.0 Now Available with Gemini 3 Pro
           </div>
           
-          <h1 className="text-5xl lg:text-7xl font-extrabold tracking-tight mb-6 bg-clip-text text-transparent bg-gradient-to-b from-white to-gray-400">
-            Dominate the Felt with <br/>
-            <span className="text-white">AI-Powered Intelligence</span>
+          <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tighter mb-8 text-white leading-[0.9]">
+            The Edge <br/>
+            <span className="text-transparent bg-clip-text bg-gradient-to-b from-zinc-200 to-zinc-600">
+              You Deserve.
+            </span>
           </h1>
           
-          <p className="text-xl text-gray-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-            The all-in-one suite for live poker players. Convert YouTube streams to hand histories, analyze player stats, and get real-time GTO coaching.
+          <p className="text-lg md:text-xl text-zinc-400 max-w-2xl mx-auto mb-12 leading-relaxed font-medium">
+            Transform YouTube streams into actionable data. 
+            <span className="text-white"> Analyze hands</span>, 
+            <span className="text-white"> detect leaks</span>, and 
+            <span className="text-white"> master GTO</span> with the world's most advanced poker AI.
           </p>
           
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <button 
-              onClick={onLogin}
-              className="px-8 py-4 bg-gradient-to-r from-poker-gold to-yellow-500 text-black font-bold rounded-lg hover:shadow-[0_0_30px_-5px_rgba(251,191,36,0.5)] transition-all flex items-center gap-2"
-            >
-              Start Free Trial <ChevronRight className="w-5 h-5" />
-            </button>
-            <button className="px-8 py-4 bg-gray-900 border border-gray-700 text-white font-semibold rounded-lg hover:bg-gray-800 transition-all flex items-center gap-2">
-              <Play className="w-4 h-4 fill-current" /> Watch Demo
-            </button>
+          {/* Refactored CTA Section */}
+          <div className="flex flex-col items-center gap-6 w-full max-w-md mx-auto">
+            <div className="flex flex-col sm:flex-row w-full gap-4">
+                <button 
+                  onClick={onLogin}
+                  className="flex-1 group relative px-8 py-4 bg-gradient-to-b from-poker-gold to-yellow-600 text-black font-black text-base rounded-xl shadow-[0_0_40px_-10px_rgba(251,191,36,0.3)] hover:shadow-[0_0_60px_-10px_rgba(251,191,36,0.5)] transition-all hover:-translate-y-1 overflow-hidden"
+                >
+                  <div className="absolute inset-0 bg-white/20 group-hover:translate-x-full duration-500 transition-transform skew-x-12 -ml-4"></div>
+                  <div className="relative flex items-center justify-center gap-2">
+                    Start Free Trial <ChevronRight className="w-5 h-5 stroke-[3px]" />
+                  </div>
+                </button>
+                
+                <button className="flex-1 px-8 py-4 bg-zinc-900/50 hover:bg-zinc-800 border border-white/10 text-white font-bold text-base rounded-xl backdrop-blur-md transition-all flex items-center justify-center gap-2 group hover:border-white/20">
+                  <Play className="w-4 h-4 fill-current group-hover:scale-110 transition-transform" /> Watch Demo
+                </button>
+            </div>
+            
+            <div className="flex items-center gap-6 text-[10px] sm:text-xs font-medium text-zinc-500 uppercase tracking-wide">
+                <span className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-poker-emerald" /> No Credit Card</span>
+                <span className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-poker-emerald" /> 14-Day Free Access</span>
+                <span className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-poker-emerald" /> Cancel Anytime</span>
+            </div>
           </div>
+
         </div>
       </section>
 
-      {/* Features Grid */}
-      <section className="py-24 bg-black/50 border-y border-gray-900">
+      {/* Trust Strip */}
+      <div className="w-full border-y border-white/5 bg-black/40 backdrop-blur-sm py-8 overflow-hidden">
+          <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-center gap-8 md:gap-16 opacity-50 grayscale hover:grayscale-0 transition-all duration-700">
+              <span className="text-sm font-bold text-zinc-500 uppercase tracking-widest">Trusted by players on</span>
+              <div className="flex items-center gap-12">
+                  <div className="text-xl font-black italic tracking-tighter text-white">POKERGO</div>
+                  <div className="text-xl font-black tracking-tight text-white flex items-center gap-1"><span className="text-red-600">HUSTLER</span> LIVE</div>
+                  <div className="text-xl font-bold tracking-tight text-white">PokerStars</div>
+                  <div className="text-xl font-black tracking-tight text-white">TRITON</div>
+              </div>
+          </div>
+      </div>
+
+      {/* Feature Grid */}
+      <section className="py-32 relative">
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="p-8 rounded-2xl bg-gray-900/50 border border-gray-800 hover:border-poker-gold/30 transition-colors group">
-              <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <Video className="w-6 h-6 text-blue-400" />
-              </div>
-              <h3 className="text-xl font-bold mb-3">Video to Hand History</h3>
-              <p className="text-gray-400 leading-relaxed">
-                Paste any Hustler Casino Live URL. Our AI vision engine extracts stacks, cards, and actions instantly.
-              </p>
+            
+            {/* Feature 1 */}
+            <div className="group relative p-1 rounded-3xl bg-gradient-to-b from-white/10 to-white/5 hover:from-poker-gold/50 hover:to-poker-gold/10 transition-all duration-500">
+                <div className="absolute inset-0 bg-poker-gold/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="relative h-full bg-[#0a0a0a] rounded-[22px] p-8 flex flex-col border border-white/5">
+                    <div className="w-14 h-14 bg-blue-500/10 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500 border border-blue-500/20">
+                        <Video className="w-7 h-7 text-blue-400" />
+                    </div>
+                    <h3 className="text-2xl font-bold mb-3 text-white">Vision Engine</h3>
+                    <p className="text-zinc-400 leading-relaxed text-sm">
+                        Paste any YouTube URL. Our vision models extract cards, stacks, and pot sizes with 99.8% accuracy in real-time.
+                    </p>
+                </div>
             </div>
             
-            <div className="p-8 rounded-2xl bg-gray-900/50 border border-gray-800 hover:border-poker-gold/30 transition-colors group">
-              <div className="w-12 h-12 bg-green-500/10 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <BarChart3 className="w-6 h-6 text-green-400" />
-              </div>
-              <h3 className="text-xl font-bold mb-3">CRM & HUD Stats</h3>
-              <p className="text-gray-400 leading-relaxed">
-                Track VPIP, PFR, and Aggression factors. Tag players as Fish, Whales, or Pros automatically.
-              </p>
+            {/* Feature 2 */}
+            <div className="group relative p-1 rounded-3xl bg-gradient-to-b from-white/10 to-white/5 hover:from-poker-emerald/50 hover:to-poker-emerald/10 transition-all duration-500">
+                <div className="absolute inset-0 bg-poker-emerald/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="relative h-full bg-[#0a0a0a] rounded-[22px] p-8 flex flex-col border border-white/5">
+                    <div className="w-14 h-14 bg-emerald-500/10 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500 border border-emerald-500/20">
+                        <BarChart3 className="w-7 h-7 text-emerald-400" />
+                    </div>
+                    <h3 className="text-2xl font-bold mb-3 text-white">Smart HUD</h3>
+                    <p className="text-zinc-400 leading-relaxed text-sm">
+                        Automated player profiling. Track VPIP, PFR, and 3-Bet frequencies to identify whales and crush the regs.
+                    </p>
+                </div>
             </div>
 
-            <div className="p-8 rounded-2xl bg-gray-900/50 border border-gray-800 hover:border-poker-gold/30 transition-colors group">
-              <div className="w-12 h-12 bg-purple-500/10 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <Cpu className="w-6 h-6 text-purple-400" />
-              </div>
-              <h3 className="text-xl font-bold mb-3">AI Strategy Coach</h3>
-              <p className="text-gray-400 leading-relaxed">
-                Ask specific strategy questions. Our Gemini-powered engine analyzes line checks and GTO deviations.
-              </p>
+            {/* Feature 3 */}
+            <div className="group relative p-1 rounded-3xl bg-gradient-to-b from-white/10 to-white/5 hover:from-purple-500/50 hover:to-purple-500/10 transition-all duration-500">
+                <div className="absolute inset-0 bg-purple-500/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="relative h-full bg-[#0a0a0a] rounded-[22px] p-8 flex flex-col border border-white/5">
+                    <div className="w-14 h-14 bg-purple-500/10 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500 border border-purple-500/20">
+                        <Cpu className="w-7 h-7 text-purple-400" />
+                    </div>
+                    <h3 className="text-2xl font-bold mb-3 text-white">GTO Coach</h3>
+                    <p className="text-zinc-400 leading-relaxed text-sm">
+                        Powered by Gemini 3 Pro. Ask specific questions about lines, ranges, and exploits. Your personal high-stakes coach.
+                    </p>
+                </div>
             </div>
+
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-12 border-t border-gray-900 text-center text-gray-500 text-sm">
-        <p>&copy; 2024 Live Poker Pro. All rights reserved.</p>
+      <footer className="py-12 border-t border-white/5 bg-black text-center">
+        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
+            <div className="text-zinc-500 text-xs">
+                &copy; 2024 Live Poker Pro. All rights reserved.
+            </div>
+            <div className="flex gap-6">
+                <Globe2 className="w-4 h-4 text-zinc-600 hover:text-white cursor-pointer transition-colors" />
+                <ShieldCheck className="w-4 h-4 text-zinc-600 hover:text-white cursor-pointer transition-colors" />
+            </div>
+        </div>
       </footer>
     </div>
   );
