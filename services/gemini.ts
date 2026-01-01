@@ -1,4 +1,5 @@
-import { GoogleGenAI, Tool, Type } from "@google/genai";
+
+import { GoogleGenAI, Tool, Type, Part } from "@google/genai";
 import { AnalysisResult } from "../types";
 
 // Helper to convert file to base64
@@ -101,7 +102,7 @@ export const analyzePokerVideo = async (
   streamCallback?: (text: string) => void
 ): Promise<AnalysisResult> => {
   const ai = getAIClient();
-  let contents: any = null;
+  let parts: Part[] = [];
   let toolConfig = {};
   
   // Default Prompt
@@ -114,14 +115,10 @@ export const analyzePokerVideo = async (
     progressCallback("Uploading video frame data...");
     const base64Data = await fileToGenerativePart(videoFile);
     
-    // Strict Structure for Gemini Multimodal
-    contents = {
-      role: 'user',
-      parts: [
+    parts = [
         { text: promptText },
         { inlineData: { mimeType: videoFile.type, data: base64Data } }
-      ]
-    };
+    ];
   } else {
     // YouTube URL Flow
     progressCallback("Scanning YouTube video context...");
@@ -138,10 +135,7 @@ export const analyzePokerVideo = async (
     **Output**: A valid PokerStars Hand History text block.
     `;
 
-    contents = {
-        role: 'user',
-        parts: [{ text: promptText }]
-    };
+    parts = [{ text: promptText }];
     // Enable Search to help with YouTube URLs which cannot be watched directly
     toolConfig = { tools: [{ googleSearch: {} }] };
   }
@@ -152,7 +146,10 @@ export const analyzePokerVideo = async (
     const responseStream = await retryOperation(async () => {
         return await ai.models.generateContentStream({
             model: MODEL_NAME,
-            contents: contents, 
+            contents: {
+                role: 'user',
+                parts: parts
+            },
             config: {
                 systemInstruction: HAND_PARSER_INSTRUCTION,
                 ...toolConfig
@@ -243,7 +240,6 @@ export const generateQueryFromNaturalLanguage = async (nlQuery: string): Promise
             model: "gemini-3-flash-preview",
             contents: { parts: [{ text: prompt }] }
         });
-        // Fix: Use result.text directly
         return result.text?.trim().replace(/```/g, '') || "";
     } catch (e) {
         console.error("Query gen failed", e);
