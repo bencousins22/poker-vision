@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { getCoachChat } from '../services/gemini';
 import { retrieveContext } from '../services/rag';
@@ -76,14 +75,14 @@ export const StrategyCoach: React.FC = () => {
           const enhancedPrompt = `${text}\n${ragResult.systemMessage}`;
 
           // 2. Send to Gemini
-          // IMPORTANT: Explicitly wrap content in { parts: [{ text: ... }] } to satisfy SDK ContentUnion type requirements
+          // Fix: Use 'message' parameter correctly for chat.sendMessage
           const result = await chatSessionRef.current.sendMessage({
-              parts: [{ text: enhancedPrompt }]
+              message: enhancedPrompt
           });
-          const response = result.response;
+          const response = result; // result IS the response in @google/genai
           
           // Check for Function Calls
-          const functionCalls = response.functionCalls ? response.functionCalls() : [];
+          const functionCalls = response.functionCalls || [];
           
           if (functionCalls && functionCalls.length > 0) {
               // Handle Tools
@@ -110,7 +109,7 @@ export const StrategyCoach: React.FC = () => {
               }]);
               
               // If there's accompanying text, add it
-              const textContent = response.text ? response.text() : null;
+              const textContent = response.text || null;
               if (textContent) {
                    setMessages(prev => [...prev, {
                       id: crypto.randomUUID(),
@@ -122,7 +121,7 @@ export const StrategyCoach: React.FC = () => {
 
           } else {
               // Standard Text Response
-              const responseText = response.text ? response.text() : null;
+              const responseText = response.text || null;
               if (responseText) {
                   setMessages(prev => [...prev, {
                       id: crypto.randomUUID(),

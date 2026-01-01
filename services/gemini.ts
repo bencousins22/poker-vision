@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Tool, Type } from "@google/genai";
 import { AnalysisResult } from "../types";
 
@@ -244,7 +243,8 @@ export const generateQueryFromNaturalLanguage = async (nlQuery: string): Promise
             model: "gemini-3-flash-preview",
             contents: { parts: [{ text: prompt }] }
         });
-        return result.response.text?.trim().replace(/```/g, '') || "";
+        // Fix: Use result.text directly
+        return result.text?.trim().replace(/```/g, '') || "";
     } catch (e) {
         console.error("Query gen failed", e);
         return "";
