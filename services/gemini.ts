@@ -16,26 +16,7 @@ export const fileToGenerativePart = async (file: File): Promise<string> => {
   });
 };
 
-const HAND_PARSER_INSTRUCTION = `
-You are an expert Poker Hand History Transcriber specializing in video analysis of "Hustler Casino Live" (HCL) streams.
-Your task is to watch the poker footage and convert the action into a **STRICT PokerStars Hand History** format that imports perfectly into Holdem Manager 3 (HM3) and PokerTracker 4 (PT4).
-
-**VISUAL ANALYSIS GUIDE (HCL DECALS):**
-1.  **Player Nameplates**: Located in black boxes around the table. Top text is Name, bottom text (e.g., "$15,400") is Stack.
-2.  **Dealer Button**: White disc labeled 'D'. Assign seat # based on button position.
-3.  **Active Player**: Look for the yellow/gold border around a player's nameplate.
-4.  **Pot Size**: Displayed in the center widget (e.g., "POT: $450").
-5.  **Cards**: RFID graphics appear next to nameplates.
-6.  **Community Cards**: Appear in the center of the table.
-
-**FORMATTING RULES (STRICT COMPLIANCE):**
-1.  **Header**: PokerStars Hand #<Random10Digit>:  Hold'em No Limit ($<SB>/$<BB> USD) - <YYYY>/<MM>/<DD> <HH>:<MM>:<SS> ET
-2.  **Table**: Table 'Hustler Live' 9-max Seat #1 is the button
-3.  **Seats**: Seat <N>: <PlayerName> ($<StackAmount> in chips)
-4.  **Action**: folds, checks, calls $<Amt>, bets $<Amt>, raises $<Amt> to $<Total>.
-5.  **Streets**: *** FLOP *** [c1 c2 c3], *** TURN *** [b1 b2 b3] [c4], *** RIVER *** [b1 b2 b3 c4] [c5].
-6.  **Output**: Return ONLY the raw text. NO markdown.
-`;
+const HAND_PARSER_INSTRUCTION = "You are an expert Poker Hand History Transcriber specializing in video analysis of 'Hustler Casino Live' (HCL) streams. Your task is to watch the poker footage and convert the action into a STRICT PokerStars Hand History format. VISUAL ANALYSIS GUIDE: 1. Player Nameplates: Top text is Name, bottom text is Stack. 2. Dealer Button: White disc labeled 'D'. 3. Active Player: Yellow/gold border around nameplate. 4. Cards: RFID graphics next to nameplates. FORMATTING RULES: 1. Header: PokerStars Hand #<ID>: Hold'em No Limit. 2. Seats: Seat <N>: <Name> ($<Stack> in chips). 3. Streets: *** FLOP *** [c1 c2 c3]. Return ONLY raw text.";
 
 const COACH_TOOLS: Tool[] = [{
     functionDeclarations: [
@@ -91,9 +72,8 @@ export const analyzePokerVideo = async (
   progressCallback: (msg: string) => void,
   streamCallback?: (text: string) => void
 ): Promise<AnalysisResult> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
   let parts: Part[] = [];
-  let toolConfig = {};
   
   let promptText = "Analyze this poker footage. Extract the hand history.";
 
@@ -108,7 +88,6 @@ export const analyzePokerVideo = async (
     progressCallback("Scanning YouTube video context...");
     promptText = `Analyze the poker hand in this video URL: ${youtubeUrl}. Create a PokerStars Hand History text block based on the visual graphics.`;
     parts = [{ text: promptText }];
-    toolConfig = { tools: [{ googleSearch: {} }] };
   }
 
   progressCallback(`Starting Gemini 3 Pro Vision analysis...`);
@@ -117,10 +96,9 @@ export const analyzePokerVideo = async (
     const responseStream = await retryOperation(async () => {
         return await ai.models.generateContentStream({
             model: MODEL_NAME,
-            contents: { parts },
+            contents: [{ parts }],
             config: {
                 systemInstruction: HAND_PARSER_INSTRUCTION,
-                ...toolConfig
             }
         });
     });
@@ -150,32 +128,24 @@ export const analyzePokerVideo = async (
 };
 
 export const getCoachChat = (systemContext: string) => {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
     return ai.chats.create({
         model: MODEL_NAME,
         config: {
-            systemInstruction: `You are 'PokerVision Pro', an elite poker coach. Use the context below to help the user.
-            
-            Capabilities:
-            1. Navigate views.
-            2. Analyze video URLs.
-            3. Provide GTO strategy advice.
-            
-            Current Context:
-            ${systemContext}`,
+            systemInstruction: `You are 'PokerVision Pro', an elite poker coach. Use the context below to help the user. Current Context: ${systemContext}`,
             tools: COACH_TOOLS
         }
     });
 };
 
 export const generateQueryFromNaturalLanguage = async (nlQuery: string): Promise<string> => {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
     const prompt = `Convert this natural language poker question into PokerQL: "${nlQuery}". Fields: win, loss, pot, hand, range, pos, action, tag. Output ONLY the query string.`;
     
     try {
         const result = await ai.models.generateContent({
             model: "gemini-3-flash-preview",
-            contents: { parts: [{ text: prompt }] }
+            contents: [{ parts: [{ text: prompt }] }]
         });
         return result.text?.trim().replace(/```/g, '') || "";
     } catch (e) {
