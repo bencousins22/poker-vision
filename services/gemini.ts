@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Tool, Type, Part } from "@google/genai";
 import { AnalysisResult } from "../types";
 
@@ -56,13 +57,24 @@ const COACH_TOOLS: Tool[] = [{
                 },
                 required: ["view"]
             }
+        },
+        {
+            name: "analyze_video_url",
+            description: "Trigger analysis of a specific YouTube URL.",
+            parameters: {
+                type: Type.OBJECT,
+                properties: {
+                    url: { type: Type.STRING, description: "The YouTube URL to analyze." }
+                },
+                required: ["url"]
+            }
         }
     ]
 }];
 
-// Models
-const VIDEO_MODEL = "gemini-1.5-pro-latest"; // Best for Multimodal (Video/Audio/Text)
-const REASONING_MODEL = "gemini-3-pro-preview"; // Best for complex reasoning/text
+// Models - Updated to Gemini 3 Flash Preview per request
+const VIDEO_MODEL = "gemini-3-flash-preview"; 
+const REASONING_MODEL = "gemini-3-flash-preview";
 
 export const analyzePokerVideo = async (
   videoFile: File | null, 
@@ -148,7 +160,9 @@ export const getCoachChat = (systemContext: string) => {
         model: REASONING_MODEL,
         config: {
             systemInstruction: `You are 'PokerVision Pro', an AI coach. Context: ${systemContext}`,
-            tools: COACH_TOOLS
+            tools: COACH_TOOLS,
+            // Added thinking budget to enable Gemini 3 reasoning capabilities
+            thinkingConfig: { thinkingBudget: 2048 } 
         }
     });
 };
@@ -157,7 +171,7 @@ export const generateQueryFromNaturalLanguage = async (nlQuery: string): Promise
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     try {
         const response = await ai.models.generateContent({
-            model: "gemini-3-flash-preview", 
+            model: REASONING_MODEL, 
             contents: [{ parts: [{ text: `Convert this natural language request into a specific SQL-like WHERE clause for poker hand filtering. Fields: win (number), hand (e.g. "AKs"), pos (string), pot (number), action (string). Input: "${nlQuery}". Output ONLY the raw string, e.g. "win > 100 AND hand = 'AA'".` }] }]
         });
         return response.text?.trim() || "";
