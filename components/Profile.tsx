@@ -149,7 +149,7 @@ export const Profile: React.FC = () => {
                             Google GenAI
                         </button>
                         <button 
-                            onClick={() => { setAiProvider('openrouter'); setSelectedModel('google/gemini-2.0-flash-001'); }}
+                            onClick={() => { setAiProvider('openrouter'); setSelectedModel('google/gemini-3-flash-preview'); }}
                             className={`flex-1 py-3 px-4 rounded-xl border font-bold text-sm transition-all ${
                                 aiProvider === 'openrouter' 
                                 ? 'bg-zinc-800 border-poker-gold text-white shadow-md' 
@@ -192,6 +192,7 @@ export const Profile: React.FC = () => {
                                 </>
                             ) : (
                                 <>
+                                    <option value="google/gemini-3-flash-preview">Google Gemini 3 Flash Preview</option>
                                     <option value="google/gemini-2.0-flash-001">Google Gemini 2.0 Flash</option>
                                     <option value="google/gemini-2.0-pro-exp-02-05:free">Google Gemini 2.0 Pro Exp (Free)</option>
                                     <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>

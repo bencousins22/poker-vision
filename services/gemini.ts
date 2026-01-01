@@ -102,7 +102,9 @@ const callOpenRouter = async (
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${apiKey}`,
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "HTTP-Referer": typeof window !== 'undefined' ? window.location.origin : "https://pokervision.app",
+                "X-Title": "PokerVision"
             },
             body: JSON.stringify({
                 model: model,
