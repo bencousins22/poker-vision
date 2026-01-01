@@ -52,11 +52,14 @@ export const Auth: React.FC<Props> = ({ onSuccess, onCancel }) => {
   const login = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       setIsLoading(true);
+      setError(null);
       try {
         // Fetch User Profile
         const userInfo = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
           headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
         }).then(res => res.json());
+
+        if (!userInfo.email) throw new Error("Could not retrieve email.");
 
         const user = createSession(userInfo.email, userInfo.name, tokenResponse.access_token);
         onSuccess(user);
@@ -66,11 +69,11 @@ export const Auth: React.FC<Props> = ({ onSuccess, onCancel }) => {
       }
     },
     onError: (errorResponse) => {
-        setError("Google Login Failed: " + errorResponse.error_description);
+        setError("Google Login Failed: " + (errorResponse.error_description || "Pop-up closed or blocked."));
         setIsLoading(false);
     },
-    scope: 'https://www.googleapis.com/auth/cloud-platform https://www.googleapis.com/auth/generative-language.retriever https://www.googleapis.com/auth/youtube.readonly',
-    flow: 'implicit' // Get access token directly
+    scope: 'https://www.googleapis.com/auth/cloud-platform https://www.googleapis.com/auth/generative-language.retriever https://www.googleapis.com/auth/youtube.readonly email profile openid',
+    flow: 'implicit' 
   });
 
   const handleLogin = (e: React.FormEvent) => {
@@ -96,7 +99,7 @@ export const Auth: React.FC<Props> = ({ onSuccess, onCancel }) => {
         </div>
 
         {error && (
-            <div className="mb-4 p-3 bg-red-900/20 border border-red-900/50 rounded-lg flex items-center gap-2 text-xs text-red-400">
+            <div className="mb-4 p-3 bg-red-900/20 border border-red-900/50 rounded-lg flex items-center gap-2 text-xs text-red-400 animate-in slide-in-from-top-2">
                 <AlertTriangle className="w-4 h-4 shrink-0" />
                 {error}
             </div>

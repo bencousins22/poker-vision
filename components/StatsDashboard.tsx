@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useEffect } from 'react';
 import { usePoker } from '../App';
 import { calculateStats, parseHeroHandDetails, getHoleCardsKey, calculateSessions } from '../services/statsParser';
@@ -72,7 +73,7 @@ const KPICard = ({ label, value, subtext, icon: Icon, trend, color = "emerald" }
                 {trend !== undefined && (
                     <div className={`flex items-center gap-1 text-[10px] font-bold ${trend >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                         {trend >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-                        {Math.abs(trend as number)}%
+                        {Math.abs(trend)}%
                     </div>
                 )}
             </div>
@@ -221,10 +222,10 @@ const OverviewTab = ({ hands, stats, timeFilter, setTimeFilter }: { hands: HandH
                                     tick={{fontSize: 10, fill: '#52525b'}} 
                                     axisLine={false} 
                                     tickLine={false} 
-                                    tickFormatter={(val: any) => `$${val}`}
+                                    tickFormatter={(val: number | string) => `$${val}`}
                                     width={40}
                                 />
-                                <Tooltip content={<CustomTooltip formatter={(val: any) => `$${Number(val as any).toLocaleString()}`} />} />
+                                <Tooltip content={<CustomTooltip formatter={(val: any) => `$${Number(val).toLocaleString()}`} />} />
                                 <Area type="monotone" dataKey="total" stroke="#10b981" strokeWidth={2} fill="url(#colorTotal)" name="Total Profit" />
                                 <Area type="monotone" dataKey="sd" stroke="#3b82f6" strokeWidth={2} fill="none" strokeDasharray="3 3" name="Showdown" />
                                 <Area type="monotone" dataKey="nsd" stroke="#ef4444" strokeWidth={2} fill="none" strokeDasharray="3 3" name="Non-Showdown" />
@@ -246,13 +247,13 @@ const OverviewTab = ({ hands, stats, timeFilter, setTimeFilter }: { hands: HandH
                             {Array.from({ length: 13 }).map((_, r) => (
                                 Array.from({ length: 13 }).map((_, c) => {
                                     const hand = getMatrixCell(r, c);
-                                    const val = heatmapData.get(hand) || 0;
+                                    const val: number = heatmapData.get(hand) || 0;
                                     
                                     // Heatmap Logic
                                     let bg = 'bg-[#18181b]';
                                     let text = 'text-zinc-700';
                                     if (val !== 0) {
-                                        const opacity = Math.min(Math.abs(val as number) / maxWin, 1) * 0.9 + 0.1;
+                                        const opacity = Math.min(Math.abs(val) / maxWin, 1) * 0.9 + 0.1;
                                         bg = val > 0 ? `rgba(16, 185, 129, ${opacity})` : `rgba(239, 68, 68, ${opacity})`;
                                         text = 'text-white';
                                     }
@@ -329,7 +330,7 @@ const OverviewTab = ({ hands, stats, timeFilter, setTimeFilter }: { hands: HandH
                                             <td className="p-4 font-mono text-zinc-400">{session.mostPlayedStakes}</td>
                                             <td className="p-4 font-mono">${session.hourlyRate.toFixed(0)}/hr</td>
                                             <td className={`p-4 text-right font-bold font-mono ${session.netWon >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                                {session.netWon >= 0 ? '+' : ''}${session.netWon.toLocaleString()}
+                                                {session.netWon >= 0 ? '+' : ''}${Math.abs(session.netWon).toLocaleString()}
                                             </td>
                                         </tr>
                                     ))

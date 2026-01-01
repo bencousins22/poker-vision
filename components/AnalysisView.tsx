@@ -1,11 +1,12 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { AnalysisResult, AnalysisStatus, HandHistory } from '../types';
-import { analyzePokerVideo } from '../services/gemini';
+import { analyzePokerVideo, getVideoIntelligence } from '../services/gemini';
 import { saveHand } from '../services/storage';
 import { usePoker } from '../App';
 import ReactPlayer from 'react-player';
-import { Upload, Loader2, Youtube, Terminal, Copy, Save, Wand2, FileText, Film, Sparkles, FileVideo, Eye, DollarSign, Layers, Maximize, Minimize, Scan, Activity, Aperture, AlertTriangle, PlayCircle, ArrowRight, Settings2, ExternalLink, Check, Cloud, RefreshCw } from 'lucide-react';
+import { Upload, Loader2, Youtube, Terminal, Copy, Save, Wand2, FileText, Film, Sparkles, FileVideo, Eye, DollarSign, Layers, Maximize, Minimize, Scan, Activity, Aperture, AlertTriangle, PlayCircle, ArrowRight, Settings2, ExternalLink, Check, Cloud, RefreshCw, BrainCircuit, Tag, TextSelect } from 'lucide-react';
+import { Tooltip } from './Tooltip';
 
 const AnalysisPipeline: React.FC<{ step: number }> = ({ step }) => {
     const steps = [
@@ -45,18 +46,20 @@ const AnalysisPipeline: React.FC<{ step: number }> = ({ step }) => {
 };
 
 export const AnalysisView: React.FC = () => {
-  const { addHand, activeVideoUrl, setSelectedHand, setViewMode, user } = usePoker();
+  const { addHand, activeVideoUrl, setSelectedHand, setViewMode, user, addToast } = usePoker();
   const [url, setUrl] = useState('');
   const [file, setFile] = useState<File | null>(null);
   
   const [status, setStatus] = useState<AnalysisStatus>(AnalysisStatus.IDLE);
   const [progressStep, setProgressStep] = useState(0);
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [intelligence, setIntelligence] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
   const [logs, setLogs] = useState<{id: string, time: string, msg: string, type: string}[]>([]);
   const [streamingContent, setStreamingContent] = useState('');
   const [siteFormat, setSiteFormat] = useState('Hustler Casino Live');
+  const [activeTab, setActiveTab] = useState<'output' | 'logs' | 'intelligence'>('output');
 
   // Player State
   const [isCinemaMode, setIsCinemaMode] = useState(false);
@@ -66,7 +69,6 @@ export const AnalysisView: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logsEndRef = useRef<HTMLDivElement>(null);
 
-  // Fix: Cast ReactPlayer to any to avoid internal library type definition conflicts
   const Player = ReactPlayer as any;
 
   useEffect(() => {
@@ -75,6 +77,7 @@ export const AnalysisView: React.FC = () => {
         setFile(null);
         setStatus(AnalysisStatus.IDLE);
         setResult(null);
+        setIntelligence(null);
         setStreamingContent('');
         setLogs([]);
         setPlayerError(false);
@@ -148,6 +151,7 @@ export const AnalysisView: React.FC = () => {
     setProgressStep(1);
     setError(null);
     setResult(null);
+    setIntelligence(null);
     setStreamingContent('');
     setLogs([]); 
     
@@ -171,18 +175,37 @@ export const AnalysisView: React.FC = () => {
                 setStreamingContent(streamText);
                 if (streamText.length > 50 && progressStep < 4) setProgressStep(4);
             },
-            user?.settings?.ai // Pass AI settings
+            user?.settings?.ai
         );
         
         setResult(res);
         setStatus(AnalysisStatus.COMPLETE);
         setProgressStep(5);
         addLog("Hand History Extraction Complete.", 'success');
+        
+        // Auto-trigger intelligence for file uploads
+        if (file && user?.settings?.ai?.provider === 'google') {
+            handleDeepAnalysis();
+        }
+
     } catch (err: any) {
         setError(err.message);
         setStatus(AnalysisStatus.ERROR);
         addLog(`Analysis Failed: ${err.message}`, 'error');
     }
+  };
+
+  const handleDeepAnalysis = async () => {
+      addLog("Starting Deep Video Intelligence scan...", "system");
+      try {
+          const data = await getVideoIntelligence(file, url, user?.settings?.ai);
+          setIntelligence(data);
+          setActiveTab('intelligence');
+          addLog("Video Intelligence metadata extracted.", "success");
+      } catch (e: any) {
+          addToast({ title: "Deep Analysis Failed", description: e.message, type: "error" });
+          addLog(`Deep Scan Error: ${e.message}`, "error");
+      }
   };
 
   const sanitizeHandHistory = (text: string) => {
@@ -215,14 +238,14 @@ export const AnalysisView: React.FC = () => {
       stakes,
       rawText: cleanText,
       summary: `${hero} vs Villain | ${pot} Pot`,
-      potSize: pot
+      potSize: pot,
+      tags: intelligence?.labels ? intelligence.labels.slice(0,3) : []
     };
 
     const newHand = saveHand(handData);
     addHand(newHand);
     addLog(`Hand saved to database: ${newHand.id}`, 'success');
     
-    // Navigation
     setSelectedHand(newHand);
     setViewMode('review');
   };
@@ -278,38 +301,38 @@ export const AnalysisView: React.FC = () => {
                     )}
 
                     <div className="space-y-4 relative z-10 overflow-y-auto flex-1 scrollbar-none">
-                        {/* File Input */}
-                        <div 
-                            onClick={() => fileInputRef.current?.click()}
-                            className={`group relative border border-dashed rounded-xl p-4 transition-all cursor-pointer text-center flex flex-col items-center justify-center min-h-[100px] ${
-                                file ? 'border-poker-emerald/50 bg-poker-emerald/5' : 'border-zinc-800 hover:border-zinc-600 hover:bg-zinc-800/50'
-                            }`}
-                        >
-                            <input 
-                                id="video-upload"
-                                name="videoFile"
-                                type="file" 
-                                ref={fileInputRef} 
-                                className="hidden" 
-                                accept="video/*" 
-                                onChange={(e) => { setFile(e.target.files?.[0] || null); if(url) setUrl(''); }} 
-                            />
-                            {file ? (
-                                <div className="flex flex-col items-center gap-2 animate-in zoom-in duration-300">
-                                    <FileVideo className="w-6 h-6 text-poker-emerald" />
-                                    <span className="text-xs font-bold text-white max-w-[150px] truncate">{file.name}</span>
-                                    <span className="text-[9px] text-zinc-500">{(file.size / 1024 / 1024).toFixed(1)} MB</span>
-                                </div>
-                            ) : (
-                                <div className="flex flex-col items-center gap-1 text-zinc-500 group-hover:text-zinc-300">
-                                    <Upload className="w-5 h-5" />
-                                    <span className="text-xs font-bold text-white">Upload File</span>
-                                    <span className="text-[9px]">Best for Vision API</span>
-                                </div>
-                            )}
-                        </div>
+                        <Tooltip content="Upload MP4 or MOV. Max 2GB." position="bottom" className="w-full">
+                            <div 
+                                onClick={() => fileInputRef.current?.click()}
+                                className={`group relative border border-dashed rounded-xl p-4 transition-all cursor-pointer text-center flex flex-col items-center justify-center min-h-[100px] w-full ${
+                                    file ? 'border-poker-emerald/50 bg-poker-emerald/5' : 'border-zinc-800 hover:border-zinc-600 hover:bg-zinc-800/50'
+                                }`}
+                            >
+                                <input 
+                                    id="video-upload"
+                                    name="videoFile"
+                                    type="file" 
+                                    ref={fileInputRef} 
+                                    className="hidden" 
+                                    accept="video/*" 
+                                    onChange={(e) => { setFile(e.target.files?.[0] || null); if(url) setUrl(''); }} 
+                                />
+                                {file ? (
+                                    <div className="flex flex-col items-center gap-2 animate-in zoom-in duration-300">
+                                        <FileVideo className="w-6 h-6 text-poker-emerald" />
+                                        <span className="text-xs font-bold text-white max-w-[150px] truncate">{file.name}</span>
+                                        <span className="text-[9px] text-zinc-500">{(file.size / 1024 / 1024).toFixed(1)} MB</span>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center gap-1 text-zinc-500 group-hover:text-zinc-300">
+                                        <Upload className="w-5 h-5" />
+                                        <span className="text-xs font-bold text-white">Upload File</span>
+                                        <span className="text-[9px]">Best for Vision API</span>
+                                    </div>
+                                )}
+                            </div>
+                        </Tooltip>
 
-                        {/* URL Input */}
                         <div className="relative group">
                             <label htmlFor="video-url" className="sr-only">YouTube URL</label>
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -326,7 +349,6 @@ export const AnalysisView: React.FC = () => {
                             />
                         </div>
 
-                        {/* Format Select */}
                         <div className="space-y-1">
                             <label htmlFor="site-format" className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-1">
                                 <Settings2 className="w-3 h-3" /> Protocol
@@ -350,7 +372,6 @@ export const AnalysisView: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Action Button */}
                     <button 
                         onClick={handleAnalyze}
                         disabled={!canAnalyze || status === AnalysisStatus.PROCESSING}
@@ -384,7 +405,6 @@ export const AnalysisView: React.FC = () => {
                     </div>
                 )}
 
-                {/* Player Container */}
                 <div className={`transition-all duration-500 ease-in-out shrink-0 ${
                     isCinemaMode 
                     ? 'fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 backdrop-blur-xl' 
@@ -447,7 +467,6 @@ export const AnalysisView: React.FC = () => {
                             </div>
                         )}
 
-                        {/* HUD Overlay */}
                         {showHud && (status === AnalysisStatus.PROCESSING || isCinemaMode) && (
                             <div className="absolute inset-0 pointer-events-none z-20 overflow-hidden">
                                 <div className="absolute top-4 right-4 flex flex-col items-end gap-1">
@@ -462,19 +481,21 @@ export const AnalysisView: React.FC = () => {
                             </div>
                         )}
 
-                        {/* Floating Player Controls */}
                         <div className="absolute bottom-4 right-4 z-30 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                             <button onClick={() => setShowHud(!showHud)} className="p-1.5 bg-black/60 hover:bg-black/80 text-white rounded-lg backdrop-blur-md border border-white/10">
-                                <Scan className="w-3.5 h-3.5" />
-                             </button>
-                             <button onClick={() => setIsCinemaMode(!isCinemaMode)} className="p-1.5 bg-black/60 hover:bg-black/80 text-white rounded-lg backdrop-blur-md border border-white/10">
-                                {isCinemaMode ? <Minimize className="w-3.5 h-3.5" /> : <Maximize className="w-3.5 h-3.5" />}
-                             </button>
+                             <Tooltip content="Toggle HUD" position="left">
+                                 <button onClick={() => setShowHud(!showHud)} className="p-1.5 bg-black/60 hover:bg-black/80 text-white rounded-lg backdrop-blur-md border border-white/10">
+                                    <Scan className="w-3.5 h-3.5" />
+                                 </button>
+                             </Tooltip>
+                             <Tooltip content="Cinema Mode" position="left">
+                                 <button onClick={() => setIsCinemaMode(!isCinemaMode)} className="p-1.5 bg-black/60 hover:bg-black/80 text-white rounded-lg backdrop-blur-md border border-white/10">
+                                    {isCinemaMode ? <Minimize className="w-3.5 h-3.5" /> : <Maximize className="w-3.5 h-3.5" />}
+                                 </button>
+                             </Tooltip>
                         </div>
                     </div>
                 </div>
 
-                {/* HUD Stats */}
                 <div className="flex-1 min-h-0 bg-zinc-900/30 rounded-2xl border border-zinc-800/50 p-4 overflow-y-auto">
                     {(streamingContent || result) ? (
                         <div className="grid grid-cols-3 gap-3 animate-slide-up">
@@ -506,69 +527,122 @@ export const AnalysisView: React.FC = () => {
                 </div>
             </div>
 
-            {/* RIGHT: Logs & Output */}
+            {/* RIGHT: Output & Tabs */}
             <div className="lg:col-span-3 flex flex-col h-full gap-4 overflow-hidden">
-                <div className="flex-1 bg-[#0c0c0c] rounded-2xl border border-zinc-800 overflow-hidden flex flex-col shadow-xl">
-                    <div className="bg-zinc-900/50 px-3 py-2.5 border-b border-zinc-800 flex justify-between items-center shrink-0">
-                        <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-2">
-                            <Terminal className="w-3 h-3" /> System Logs
-                        </span>
-                        <div className="flex gap-1">
-                            <div className="w-1.5 h-1.5 rounded-full bg-zinc-700"></div>
-                            <div className="w-1.5 h-1.5 rounded-full bg-zinc-700"></div>
-                        </div>
-                    </div>
-                    <div className="flex-1 overflow-y-auto p-3 font-mono text-[9px] space-y-1 scrollbar-thin scrollbar-thumb-zinc-800">
-                        {logs.map(log => (
-                            <div key={log.id} className="flex gap-2 text-zinc-400">
-                                <span className="text-zinc-600 select-none">[{log.time}]</span>
-                                <span className={`${
-                                    log.type === 'error' ? 'text-red-400' :
-                                    log.type === 'success' ? 'text-poker-green' :
-                                    log.type === 'system' ? 'text-blue-400' : 'text-zinc-300'
-                                }`}>{log.msg}</span>
-                            </div>
-                        ))}
-                        <div ref={logsEndRef} />
-                    </div>
+                
+                {/* Tab Switcher */}
+                <div className="flex bg-zinc-900 p-1 rounded-xl border border-zinc-800 shrink-0">
+                    {['output', 'logs', 'intelligence'].map((tab) => (
+                        <button
+                            key={tab}
+                            onClick={() => setActiveTab(tab as any)}
+                            className={`flex-1 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${
+                                activeTab === tab 
+                                ? 'bg-zinc-800 text-white shadow-sm' 
+                                : 'text-zinc-500 hover:text-zinc-300'
+                            }`}
+                        >
+                            {tab === 'output' && <FileText className="w-3 h-3" />}
+                            {tab === 'logs' && <Terminal className="w-3 h-3" />}
+                            {tab === 'intelligence' && <BrainCircuit className="w-3 h-3" />}
+                            {tab}
+                        </button>
+                    ))}
                 </div>
 
-                {/* Text Output Preview */}
-                <div className="h-1/3 min-h-[150px] shrink-0 bg-zinc-900 rounded-2xl border border-zinc-800 overflow-hidden flex flex-col shadow-xl relative">
-                    <div className="px-3 py-2 border-b border-zinc-800 flex justify-between items-center bg-black/20 shrink-0">
-                        <span className="text-[9px] font-bold text-zinc-400 uppercase flex items-center gap-2">
-                            <FileText className="w-3 h-3" /> Output
-                        </span>
-                        <div className="flex gap-1">
-                            <button 
-                                onClick={() => {
-                                    const text = sanitizeHandHistory(result?.handHistory || streamingContent);
-                                    navigator.clipboard.writeText(text);
-                                    addLog('Copied to clipboard', 'success');
-                                }} 
-                                className="text-zinc-500 hover:text-white p-1"
-                            >
-                                <Copy className="w-3 h-3" />
-                            </button>
+                <div className="flex-1 bg-[#0c0c0c] rounded-2xl border border-zinc-800 overflow-hidden flex flex-col shadow-xl relative">
+                    
+                    {activeTab === 'logs' && (
+                        <div className="flex-1 overflow-y-auto p-3 font-mono text-[9px] space-y-1 scrollbar-thin scrollbar-thumb-zinc-800 animate-in fade-in">
+                            {logs.map(log => (
+                                <div key={log.id} className="flex gap-2 text-zinc-400">
+                                    <span className="text-zinc-600 select-none">[{log.time}]</span>
+                                    <span className={`${
+                                        log.type === 'error' ? 'text-red-400' :
+                                        log.type === 'success' ? 'text-poker-green' :
+                                        log.type === 'system' ? 'text-blue-400' : 'text-zinc-300'
+                                    }`}>{log.msg}</span>
+                                </div>
+                            ))}
+                            <div ref={logsEndRef} />
                         </div>
-                    </div>
-                    <div className="flex-1 relative bg-black/20 group overflow-hidden">
-                        <div className="absolute inset-0 overflow-y-auto p-3 scrollbar-thin scrollbar-thumb-zinc-800">
-                            <pre className="text-[9px] font-mono text-zinc-400 whitespace-pre-wrap font-medium leading-relaxed select-text">
-                                {sanitizeHandHistory(result?.handHistory || streamingContent)}
-                            </pre>
-                        </div>
-                        {status === AnalysisStatus.COMPLETE && (
-                            <div className="absolute bottom-3 left-3 right-3 animate-slide-up">
-                                <button 
-                                    onClick={handleSaveAndReview}
-                                    className="w-full py-2 bg-white hover:bg-zinc-200 text-black text-xs font-bold rounded-lg shadow-lg flex items-center justify-center gap-2 transition-all hover:scale-[1.02]"
-                                >
-                                    <PlayCircle className="w-3.5 h-3.5 fill-current" /> Save & Review
-                                </button>
+                    )}
+
+                    {activeTab === 'output' && (
+                        <div className="flex-1 relative flex flex-col animate-in fade-in">
+                            <div className="absolute inset-0 overflow-y-auto p-3 scrollbar-thin scrollbar-thumb-zinc-800">
+                                <pre className="text-[9px] font-mono text-zinc-400 whitespace-pre-wrap font-medium leading-relaxed select-text">
+                                    {sanitizeHandHistory(result?.handHistory || streamingContent)}
+                                </pre>
                             </div>
-                        )}
-                    </div>
+                            {status === AnalysisStatus.COMPLETE && (
+                                <div className="absolute bottom-3 left-3 right-3 animate-slide-up">
+                                    <button 
+                                        onClick={handleSaveAndReview}
+                                        className="w-full py-2 bg-white hover:bg-zinc-200 text-black text-xs font-bold rounded-lg shadow-lg flex items-center justify-center gap-2 transition-all hover:scale-[1.02]"
+                                    >
+                                        <PlayCircle className="w-3.5 h-3.5 fill-current" /> Save & Review
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {activeTab === 'intelligence' && (
+                        <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin scrollbar-thumb-zinc-800 animate-in fade-in">
+                            {intelligence ? (
+                                <>
+                                    <div>
+                                        <h4 className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                            <Tag className="w-3 h-3" /> Labels Detected
+                                        </h4>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {intelligence.labels?.map((label: string, i: number) => (
+                                                <span key={i} className="px-2 py-1 bg-zinc-800 rounded text-[9px] text-zinc-300 border border-zinc-700">
+                                                    {label}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    
+                                    <div>
+                                        <h4 className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                            <TextSelect className="w-3 h-3" /> OCR Text
+                                        </h4>
+                                        <div className="bg-zinc-900/50 p-2 rounded-lg border border-zinc-800 text-[9px] font-mono text-zinc-400 break-words">
+                                            {intelligence.text_detected?.join(', ')}
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <h4 className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                            <Activity className="w-3 h-3" /> Key Events
+                                        </h4>
+                                        <div className="space-y-1">
+                                            {intelligence.key_events?.map((evt: any, i: number) => (
+                                                <div key={i} className="flex gap-2 text-[10px]">
+                                                    <span className="font-mono text-poker-gold">{evt.time}</span>
+                                                    <span className="text-zinc-300">{evt.description}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="h-full flex flex-col items-center justify-center text-center p-4">
+                                    <BrainCircuit className="w-8 h-8 text-zinc-700 mb-2" />
+                                    <p className="text-xs text-zinc-500 mb-4">Run deep analysis to extract entities and metadata.</p>
+                                    <button 
+                                        onClick={handleDeepAnalysis} 
+                                        disabled={!file}
+                                        className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        Run Video Intelligence
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

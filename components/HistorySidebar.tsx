@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { usePoker } from '../App';
 import { Trash2, Database, Search, Filter, CloudUpload, Download, X, Play, DollarSign, Plus, Save, Wand2, Loader2, Calendar } from 'lucide-react';
@@ -6,6 +7,7 @@ import { uploadToGCS, streamToBigQuery } from '../services/gcp';
 import { getPlayerNote, savePlayerNote } from '../services/storage';
 import { generatePlayerNote } from '../services/gemini';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Tooltip } from './Tooltip';
 
 export const HistorySidebar: React.FC = () => {
   const { hands, setSelectedHand, deleteHand, selectedHand, updateHand, setViewMode, user, addToast } = usePoker();
@@ -107,17 +109,20 @@ export const HistorySidebar: React.FC = () => {
             Hand Database
           </h2>
           <div className="flex items-center gap-1">
-             <button 
-                onClick={handleCloudSync} 
-                disabled={isSyncing}
-                className={`p-1.5 rounded-lg transition-colors ${isSyncing ? 'text-poker-gold animate-pulse bg-zinc-800' : 'text-zinc-600 hover:text-white hover:bg-zinc-800'}`} 
-                title="Sync to Cloud"
-             >
-                {isSyncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CloudUpload className="w-3.5 h-3.5" />}
-             </button>
-             <button onClick={() => {}} className="p-1.5 hover:bg-zinc-800 rounded-lg text-zinc-600 hover:text-white transition-colors" title="Export">
-                <Download className="w-3.5 h-3.5" />
-             </button>
+             <Tooltip content="Sync to Google Cloud" position="bottom">
+                 <button 
+                    onClick={handleCloudSync} 
+                    disabled={isSyncing}
+                    className={`p-1.5 rounded-lg transition-colors ${isSyncing ? 'text-poker-gold animate-pulse bg-zinc-800' : 'text-zinc-600 hover:text-white hover:bg-zinc-800'}`} 
+                 >
+                    {isSyncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CloudUpload className="w-3.5 h-3.5" />}
+                 </button>
+             </Tooltip>
+             <Tooltip content="Export CSV" position="bottom">
+                 <button onClick={() => {}} className="p-1.5 hover:bg-zinc-800 rounded-lg text-zinc-600 hover:text-white transition-colors">
+                    <Download className="w-3.5 h-3.5" />
+                 </button>
+             </Tooltip>
              <div className="ml-1 h-4 w-px bg-zinc-800"></div>
              <span className="ml-2 text-[9px] font-mono font-bold text-zinc-500">{filteredHands.length}</span>
           </div>
@@ -139,16 +144,18 @@ export const HistorySidebar: React.FC = () => {
                     </button>
                 )}
             </div>
-            <button 
-                onClick={() => setShowFilters(!showFilters)}
-                className={`px-2.5 rounded-lg border transition-all flex items-center justify-center ${
-                    showFilters || startDate || endDate 
-                    ? 'bg-zinc-800 border-zinc-700 text-poker-gold' 
-                    : 'bg-zinc-900 border-zinc-800 text-zinc-600 hover:text-zinc-300'
-                }`}
-            >
-                <Filter className="w-3.5 h-3.5" />
-            </button>
+            <Tooltip content="Date Filters" position="bottom">
+                <button 
+                    onClick={() => setShowFilters(!showFilters)}
+                    className={`px-2.5 rounded-lg border transition-all flex items-center justify-center h-9 ${
+                        showFilters || startDate || endDate 
+                        ? 'bg-zinc-800 border-zinc-700 text-poker-gold' 
+                        : 'bg-zinc-900 border-zinc-800 text-zinc-600 hover:text-zinc-300'
+                    }`}
+                >
+                    <Filter className="w-3.5 h-3.5" />
+                </button>
+            </Tooltip>
         </div>
 
         <AnimatePresence>
@@ -226,12 +233,14 @@ export const HistorySidebar: React.FC = () => {
                   
                   {/* Actions Overlay */}
                   <div className="absolute right-2 top-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); deleteHand(hand.id); }}
-                        className="p-1.5 bg-zinc-900/80 hover:bg-red-900/30 rounded-md text-zinc-500 hover:text-red-400 transition-colors border border-zinc-800"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
+                      <Tooltip content="Delete Hand" position="left">
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); deleteHand(hand.id); }}
+                            className="p-1.5 bg-zinc-900/80 hover:bg-red-900/30 rounded-md text-zinc-500 hover:text-red-400 transition-colors border border-zinc-800"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                      </Tooltip>
                   </div>
                 </motion.div>
             );
@@ -261,9 +270,11 @@ export const HistorySidebar: React.FC = () => {
                 ) : (
                     <>
                         <div className="absolute right-2 top-2 flex gap-1 z-10">
-                            <button onClick={handleAiGenerateNote} disabled={isGeneratingNote} className="flex items-center gap-1 px-2 py-0.5 bg-purple-900/30 text-purple-300 border border-purple-800 rounded text-[10px] font-bold hover:bg-purple-800 hover:text-white transition-all disabled:opacity-50">
-                                {isGeneratingNote ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <Wand2 className="w-2.5 h-2.5" />} AI
-                            </button>
+                            <Tooltip content="Auto-generate notes with AI" position="top">
+                                <button onClick={handleAiGenerateNote} disabled={isGeneratingNote} className="flex items-center gap-1 px-2 py-0.5 bg-purple-900/30 text-purple-300 border border-purple-800 rounded text-[10px] font-bold hover:bg-purple-800 hover:text-white transition-all disabled:opacity-50">
+                                    {isGeneratingNote ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <Wand2 className="w-2.5 h-2.5" />} AI
+                                </button>
+                            </Tooltip>
                             <button onClick={handleSavePlayerNote} className="flex items-center gap-1 px-2 py-0.5 bg-zinc-800 text-zinc-200 rounded text-[10px] font-bold hover:bg-poker-emerald hover:text-white transition-all"><Save className="w-2.5 h-2.5" /> Save</button>
                         </div>
                         <textarea 
