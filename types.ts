@@ -140,7 +140,7 @@ export interface GCPSettings {
 }
 
 export interface AISettings {
-    provider: 'google' | 'openrouter' | 'google-oauth';
+    provider: 'google' | 'openrouter' | 'google-oauth' | 'jules';
     googleApiKey?: string;
     openRouterApiKey?: string;
     model: string; 

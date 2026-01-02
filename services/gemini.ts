@@ -1,6 +1,7 @@
 
 import { GoogleGenAI, Tool, Type, Part, GenerateContentResponse } from "@google/genai";
 import { AnalysisResult, AISettings, ChatMessage, HandHistory } from "../types";
+import { JulesService } from "./jules";
 
 // Helper to convert file to base64
 export const fileToGenerativePart = async (file: File): Promise<string> => {
@@ -254,6 +255,13 @@ export const analyzePokerVideo = async (
   const systemInstruction = isHCL ? HCL_INSTRUCTION : GENERIC_INSTRUCTION;
 
   try {
+      if (provider === 'jules') {
+          progressCallback(`Analyzing via Jules API...`);
+          const result = await JulesService.analyzeVideo(videoFile, youtubeUrl);
+          if (streamCallback) streamCallback(result.handHistory);
+          return result;
+      }
+
       if (provider === 'google' || provider === 'google-oauth') {
           if (apiKey && provider === 'google') {
               const ai = new GoogleGenAI({ apiKey });

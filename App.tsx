@@ -15,6 +15,7 @@ import { SpotTrainer } from './components/SpotTrainer';
 import { SolverView } from './components/SolverView';
 import { ToastContainer } from './components/Toast';
 import { getHands, deleteHand as deleteHandService, updateHand as updateHandService, saveUser, getUser, removeUser, clearDatabase } from './services/storage';
+import { JulesService } from './services/jules';
 import { HandHistory, ViewMode, User, PokerContextType, QueueItem, ChannelVideo, Toast } from './types';
 import { LayoutDashboard, BrainCircuit, User as UserIcon, PlayCircle, CreditCard, Tv, Eye, Sparkles, X, FlaskConical, Target, AlertTriangle, RefreshCcw, PanelLeftClose, PanelLeftOpen, PanelRightClose, MessageSquare, ChevronRight, Grid3X3, Zap } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -286,7 +287,25 @@ const App: React.FC = () => {
     useEffect(() => { user ? saveUser(user) : removeUser(); }, [user]);
 
     // Load hands on mount
-    useEffect(() => { setHands(getHands()); }, []);
+    useEffect(() => {
+        setHands(getHands());
+
+        // Also try to sync from Jules API if configured/available
+        JulesService.getHandHistories()
+            .then(apiHands => {
+                if (apiHands.length > 0) {
+                     setHands(prev => {
+                        // Merge strategies? For now just append unique ones or replace?
+                        // User requirement: "get all of the hand histories" from API.
+                        // We will prepend API hands that are not in local storage.
+                        const existingIds = new Set(prev.map(h => h.id));
+                        const newHands = apiHands.filter(h => !existingIds.has(h.id));
+                        return [...newHands, ...prev];
+                     });
+                }
+            })
+            .catch(err => console.warn("Jules API unavailable:", err));
+    }, []);
 
     // Toast Management
     const addToast = useCallback((t: Omit<Toast, 'id'>) => {
@@ -295,7 +314,20 @@ const App: React.FC = () => {
     const removeToast = useCallback((id: string) => setToasts(prev => prev.filter(t => t.id !== id)), []);
 
     // Hand Management
-    const loadHands = useCallback(() => setHands(getHands()), []);
+    const loadHands = useCallback(async () => {
+        const localHands = getHands();
+        setHands(localHands);
+        try {
+            const apiHands = await JulesService.getHandHistories();
+            setHands(prev => {
+                const existingIds = new Set(prev.map(h => h.id));
+                const newHands = apiHands.filter(h => !existingIds.has(h.id));
+                return [...newHands, ...prev];
+            });
+        } catch (e) {
+            console.error("Failed to load hands from API", e);
+        }
+    }, []);
     const addHand = useCallback((h: HandHistory) => setHands(p => [h, ...p]), []);
     const updateHand = useCallback((id: string, u: Partial<HandHistory>) => {
         updateHandService(id, u);
