@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 import process from 'node:process';
 
 export default defineConfig(({ mode }) => {
@@ -9,7 +10,10 @@ export default defineConfig(({ mode }) => {
   const youtubeKey = env.YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY || '';
 
   return {
-    plugins: [react()],
+    plugins: [
+        react(),
+        tailwindcss(),
+    ],
     define: {
       'process.env.API_KEY': JSON.stringify(apiKey),
       'process.env.YOUTUBE_API_KEY': JSON.stringify(youtubeKey),

@@ -83,7 +83,7 @@ const COACH_TOOLS: Tool[] = [{
 
 // --- AI SERVICE ABSTRACTION ---
 
-const DEFAULT_MODEL = "gemini-3-flash-preview"; 
+const DEFAULT_MODEL = "gemini-1.5-pro";
 
 export interface ChatSession {
     sendMessage: (payload: { message: string, history?: ChatMessage[] }) => Promise<{ text: string, functionCalls?: any[] }>;
@@ -416,6 +416,7 @@ export const getCoachChat = (systemContext: string, settings?: AISettings): Chat
                 try {
                     return await withRetry(async () => {
                         const result = await chat.sendMessage({ message });
+                        // Adjusting for potential response structure changes in v1.x
                         return { text: result.text || "", functionCalls: result.functionCalls };
                     });
                 } catch (e) {
