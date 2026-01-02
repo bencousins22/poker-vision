@@ -17,7 +17,8 @@ import { ToastContainer } from './components/Toast';
 import { getHands, deleteHand as deleteHandService, updateHand as updateHandService, saveUser, getUser, removeUser, clearDatabase } from './services/storage';
 import { JulesService } from './services/jules';
 import { HandHistory, ViewMode, User, PokerContextType, QueueItem, ChannelVideo, Toast } from './types';
-import { LayoutDashboard, BrainCircuit, User as UserIcon, PlayCircle, CreditCard, Tv, Eye, Sparkles, X, FlaskConical, Target, AlertTriangle, RefreshCcw, PanelLeftClose, PanelLeftOpen, PanelRightClose, MessageSquare, ChevronRight, Grid3X3, Zap } from 'lucide-react';
+import { HandStore } from './components/HandStore';
+import { LayoutDashboard, BrainCircuit, User as UserIcon, PlayCircle, CreditCard, Tv, Eye, Sparkles, X, FlaskConical, Target, AlertTriangle, RefreshCcw, PanelLeftClose, PanelLeftOpen, PanelRightClose, MessageSquare, ChevronRight, Grid3X3, Zap, Database } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 // --- Error Boundary ---
@@ -126,6 +127,7 @@ const AppShell: React.FC = () => {
             <div className="flex-1 flex flex-col gap-3 w-full px-2 overflow-y-auto no-scrollbar items-center">
                 {[
                     { id: 'analyze', icon: Tv, label: 'Vision Engine' },
+                    { id: 'store', icon: Database, label: 'Hand Library' },
                     { id: 'review', icon: PlayCircle, label: 'Replayer' },
                     { id: 'channels', icon: LayoutDashboard, label: 'Channels' },
                     { id: 'tracker', icon: Sparkles, label: 'Statistics' },
@@ -178,7 +180,8 @@ const AppShell: React.FC = () => {
             }>
                 {viewMode === 'review' ? (
                      <ReviewModeShell selectedHand={selectedHand} setSelectedHand={setSelectedHand} analyzeSpot={analyzeSpot} />
-                ) : viewMode === 'tracker' ? <StatsDashboard />
+                ) : viewMode === 'store' ? <HandStore />
+                  : viewMode === 'tracker' ? <StatsDashboard />
                   : viewMode === 'solver' ? <SolverView />
                   : viewMode === 'tools' ? <ToolsView />
                   : viewMode === 'trainer' ? <SpotTrainer />

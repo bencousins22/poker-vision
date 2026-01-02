@@ -171,7 +171,7 @@ export interface User {
   settings: UserSettings;
 }
 
-export type ViewMode = 'analyze' | 'review' | 'channels' | 'tracker' | 'strategy' | 'pricing' | 'profile' | 'tools' | 'trainer' | 'solver';
+export type ViewMode = 'analyze' | 'review' | 'channels' | 'tracker' | 'strategy' | 'pricing' | 'profile' | 'tools' | 'trainer' | 'solver' | 'store';
 
 // Queue Types
 export type QueueStatus = 'pending' | 'processing' | 'completed' | 'error';
