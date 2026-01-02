@@ -8,7 +8,7 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'rec
 import { PLAYLIST_TITLES } from './playlistData';
 
 export const HandStore: React.FC = () => {
-    const { hands, deleteHand, setSelectedHand, setViewMode, addToQueue } = usePoker();
+    const { hands, deleteHand, setSelectedHand, setViewMode, addToQueue, isQueueProcessing, queue } = usePoker();
     const [searchQuery, setSearchQuery] = useState('');
     const [sortBy, setSortBy] = useState<'date' | 'pot'>('date');
     const [filterStakes, setFilterStakes] = useState<string>('all');
@@ -64,11 +64,13 @@ export const HandStore: React.FC = () => {
          }
     };
 
+    const pendingCount = useMemo(() => queue.filter(i => i.status === 'pending' || i.status === 'processing').length, [queue]);
+
     return (
-        <div className="flex flex-col h-full bg-[#0a0a0a] text-white p-6 overflow-hidden">
-             {/* Chart Header */}
+        <div className="flex flex-col h-full bg-[#0a0a0a] text-white p-4 md:p-6 overflow-hidden">
+             {/* Chart Header - Hidden on mobile for space */}
             {hands.length > 0 && (
-                <div className="h-48 mb-6 w-full bg-zinc-900/30 rounded-2xl border border-zinc-800 p-4 relative overflow-hidden shrink-0">
+                <div className="hidden md:block h-48 mb-6 w-full bg-zinc-900/30 rounded-2xl border border-zinc-800 p-4 relative overflow-hidden shrink-0 animate-in fade-in slide-in-from-top-4">
                     <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2 absolute top-4 left-4 z-10">Activity Overview</h3>
                     <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={chartData}>
@@ -90,25 +92,37 @@ export const HandStore: React.FC = () => {
             )}
 
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 shrink-0">
-                <div>
-                    <h1 className="text-3xl font-black text-white tracking-tight mb-1">Hand Library</h1>
+            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-8 shrink-0">
+                <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-3">
+                        <h1 className="text-3xl font-black text-white tracking-tight">Hand Library</h1>
+                        {pendingCount > 0 && (
+                             <div className="px-2 py-0.5 rounded-full bg-poker-gold/10 border border-poker-gold/20 text-poker-gold text-[10px] font-bold animate-pulse">
+                                {pendingCount} Processing...
+                            </div>
+                        )}
+                    </div>
                     <p className="text-zinc-500 text-sm">Manage and analyze your collected hand histories.</p>
                 </div>
 
-                <div className="flex items-center gap-3">
-                    <button onClick={handleBulkImport} className="flex items-center gap-2 px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 rounded-xl text-sm font-bold transition-all border border-zinc-700">
-                        <Download className="w-4 h-4" /> Import Playlist
+                <div className="flex flex-wrap items-center gap-3">
+                    <button
+                        onClick={handleBulkImport}
+                        disabled={isQueueProcessing && pendingCount > 10}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl text-sm font-bold transition-all border border-zinc-700"
+                    >
+                        {isQueueProcessing ? <span className="animate-spin">⏳</span> : <Download className="w-4 h-4" />}
+                        Import Playlist
                     </button>
 
-                    <div className="relative group">
+                    <div className="relative group flex-1 md:flex-none">
                         <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-poker-gold transition-colors" />
                         <input
                             type="text"
                             placeholder="Search hands..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="bg-zinc-900 border border-zinc-800 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-poker-gold/50 focus:ring-1 focus:ring-poker-gold/50 w-64 transition-all"
+                            className="bg-zinc-900 border border-zinc-800 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-poker-gold/50 focus:ring-1 focus:ring-poker-gold/50 w-full md:w-64 transition-all shadow-inner"
                         />
                     </div>
 

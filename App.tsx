@@ -83,15 +83,25 @@ const NavItem = ({ id, icon: Icon, label, active, onClick }: any) => (
 
 const AppShell: React.FC = () => {
   const { user, setUser, selectedHand, setSelectedHand, viewMode, setViewMode, analyzeSpot } = usePoker();
-  const [leftOpen, setLeftOpen] = useState(true);
-  const [rightOpen, setRightOpen] = useState(true);
+    const [leftOpen, setLeftOpen] = useState(window.innerWidth > 1024);
+    const [rightOpen, setRightOpen] = useState(window.innerWidth > 1280);
   const [showAuth, setShowAuth] = useState(false);
 
-  // Auto-open sidebars on specific actions
+    // Auto-open sidebars on specific actions and handle resize
   useEffect(() => {
     const handleAnalyzeSpot = () => setRightOpen(true);
+        const handleResize = () => {
+             if (window.innerWidth < 1024) {
+                 setLeftOpen(false);
+                 setRightOpen(false);
+             }
+        };
     window.addEventListener('analyze-spot', handleAnalyzeSpot);
-    return () => window.removeEventListener('analyze-spot', handleAnalyzeSpot);
+        window.addEventListener('resize', handleResize);
+        return () => {
+            window.removeEventListener('analyze-spot', handleAnalyzeSpot);
+            window.removeEventListener('resize', handleResize);
+        };
   }, []);
 
   if (!user) {
@@ -119,9 +129,9 @@ const AppShell: React.FC = () => {
         {/* Trigger Zone */}
         <div className="fixed left-0 top-0 bottom-0 w-2 z-[60] peer hover:bg-poker-gold/50 transition-colors duration-300 cursor-pointer" />
         
-        {/* Nav Bar */}
-        <nav className="fixed left-0 top-0 h-full w-16 flex flex-col items-center py-6 border-r border-zinc-800/80 bg-[#050505]/95 backdrop-blur-md z-50 shrink-0 gap-6 -translate-x-full peer-hover:translate-x-0 hover:translate-x-0 transition-transform duration-300 shadow-[10px_0_30px_rgba(0,0,0,0.5)]">
-            <div className="w-10 h-10 bg-gradient-to-br from-poker-gold to-amber-700 rounded-xl flex items-center justify-center shadow-lg shrink-0 cursor-default">
+        {/* Nav Bar - Always visible on larger screens for robustness */}
+        <nav className="fixed left-0 top-0 h-full w-16 flex flex-col items-center py-6 border-r border-zinc-800/80 bg-[#050505]/95 backdrop-blur-md z-50 shrink-0 gap-6 translate-x-0 transition-transform duration-300 shadow-[10px_0_30px_rgba(0,0,0,0.5)]">
+            <div className="w-10 h-10 bg-gradient-to-br from-poker-gold to-amber-700 rounded-xl flex items-center justify-center shadow-lg shrink-0 cursor-pointer hover:scale-105 transition-transform" onClick={() => setViewMode('analyze')}>
                 <span className="font-black text-black text-xs tracking-tighter">PV</span>
             </div>
 
@@ -143,8 +153,14 @@ const AppShell: React.FC = () => {
                         active={viewMode === item.id} 
                         onClick={() => {
                             setViewMode(item.id as ViewMode);
-                            if (item.id === 'review') setLeftOpen(true);
-                            if (item.id === 'strategy') setRightOpen(true);
+                            if (window.innerWidth >= 1024) {
+                                if (item.id === 'review') setLeftOpen(true);
+                                if (item.id === 'strategy') setRightOpen(true);
+                            } else {
+                                // On mobile, close sidebars when navigating
+                                setLeftOpen(false);
+                                setRightOpen(false);
+                            }
                         }} 
                     />
                 ))}
@@ -155,6 +171,9 @@ const AppShell: React.FC = () => {
                 <NavItem id="profile" icon={UserIcon} label="Profile" active={viewMode === 'profile'} onClick={() => setViewMode('profile')} />
             </div>
         </nav>
+
+        {/* Spacer for fixed nav */}
+        <div className="w-16 shrink-0" />
 
         {/* Left Sidebar (Hand History) */}
         <div className={`relative flex flex-col border-r border-zinc-800 bg-[#050505] transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)] z-30 ${leftOpen ? 'w-80 translate-x-0' : 'w-0 -translate-x-full opacity-0'}`}>
@@ -388,7 +407,18 @@ const App: React.FC = () => {
                 try {
                     // Decide input: URL or Search Query
                     const input = pendingItem.searchQuery || pendingItem.videoUrl;
-                    const result = await analyzePokerVideo(null, input, 'Hustler Casino Live', (msg) => console.log(msg), undefined, user?.settings?.ai);
+
+                    // Explicitly define callbacks to avoid type mismatch confusion
+                    const progressLogger = (msg: string) => console.log(`[Queue ${pendingItem.id}]: ${msg}`);
+
+                    const result = await analyzePokerVideo(
+                        null,
+                        input,
+                        'Hustler Casino Live',
+                        progressLogger,
+                        undefined,
+                        user?.settings?.ai
+                    );
 
                     if (result.handHistory) {
                          const hand: HandHistory = {
