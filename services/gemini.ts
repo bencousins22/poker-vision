@@ -1,6 +1,7 @@
 
 import { GoogleGenAI, Tool, Type, Part, GenerateContentResponse } from "@google/genai";
 import { AnalysisResult, AISettings, ChatMessage, HandHistory } from "../types";
+import { JulesService } from "./jules";
 
 // Helper to convert file to base64
 export const fileToGenerativePart = async (file: File): Promise<string> => {
@@ -254,6 +255,13 @@ export const analyzePokerVideo = async (
   const systemInstruction = isHCL ? HCL_INSTRUCTION : GENERIC_INSTRUCTION;
 
   try {
+      if (provider === 'jules') {
+          progressCallback(`Analyzing via Jules API...`);
+          const result = await JulesService.analyzeVideo(videoFile, youtubeUrl);
+          if (streamCallback) streamCallback(result.handHistory);
+          return result;
+      }
+
       if (provider === 'google' || provider === 'google-oauth') {
           if (apiKey && provider === 'google') {
               const ai = new GoogleGenAI({ apiKey });
@@ -273,8 +281,8 @@ export const analyzePokerVideo = async (
               } else if (youtubeUrl) {
                 progressCallback(`Analyzing URL via Search Grounding...`);
                 const prompt = isHCL 
-                    ? `Find the poker hand history for this Hustler Casino Live video URL: ${youtubeUrl}. Reconstruct a PokerStars Hand History format.`
-                    : `Find the poker hand history for this video URL: ${youtubeUrl}. Reconstruct the hand history.`;
+                    ? `Find the poker hand history for this Hustler Casino Live video: "${youtubeUrl}". Reconstruct a PokerStars Hand History format.`
+                    : `Find the poker hand history for this video: "${youtubeUrl}". Reconstruct the hand history.`;
                 parts = [{ text: prompt }];
                 config.tools = [{ googleSearch: {} }];
               } else {
@@ -315,7 +323,7 @@ export const analyzePokerVideo = async (
               } else if (youtubeUrl) {
                   contents.push({
                       role: "user",
-                      parts: [{ text: `Analyze this YouTube URL: ${youtubeUrl}. Extract hand history.` }]
+                      parts: [{ text: `Analyze this video (URL or Title): "${youtubeUrl}". Extract hand history.` }]
                   });
               }
               const res = await callGeminiRest(accessToken, model, contents, systemInstruction);

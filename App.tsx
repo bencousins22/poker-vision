@@ -15,8 +15,11 @@ import { SpotTrainer } from './components/SpotTrainer';
 import { SolverView } from './components/SolverView';
 import { ToastContainer } from './components/Toast';
 import { getHands, deleteHand as deleteHandService, updateHand as updateHandService, saveUser, getUser, removeUser, clearDatabase } from './services/storage';
+import { JulesService } from './services/jules';
+import { analyzePokerVideo } from './services/gemini';
 import { HandHistory, ViewMode, User, PokerContextType, QueueItem, ChannelVideo, Toast } from './types';
-import { LayoutDashboard, BrainCircuit, User as UserIcon, PlayCircle, CreditCard, Tv, Eye, Sparkles, X, FlaskConical, Target, AlertTriangle, RefreshCcw, PanelLeftClose, PanelLeftOpen, PanelRightClose, MessageSquare, ChevronRight, Grid3X3, Zap } from 'lucide-react';
+import { HandStore } from './components/HandStore';
+import { LayoutDashboard, BrainCircuit, User as UserIcon, PlayCircle, CreditCard, Tv, Eye, Sparkles, X, FlaskConical, Target, AlertTriangle, RefreshCcw, PanelLeftClose, PanelLeftOpen, PanelRightClose, MessageSquare, ChevronRight, Grid3X3, Zap, Database } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 // --- Error Boundary ---
@@ -125,6 +128,7 @@ const AppShell: React.FC = () => {
             <div className="flex-1 flex flex-col gap-3 w-full px-2 overflow-y-auto no-scrollbar items-center">
                 {[
                     { id: 'analyze', icon: Tv, label: 'Vision Engine' },
+                    { id: 'store', icon: Database, label: 'Hand Library' },
                     { id: 'review', icon: PlayCircle, label: 'Replayer' },
                     { id: 'channels', icon: LayoutDashboard, label: 'Channels' },
                     { id: 'tracker', icon: Sparkles, label: 'Statistics' },
@@ -177,7 +181,8 @@ const AppShell: React.FC = () => {
             }>
                 {viewMode === 'review' ? (
                      <ReviewModeShell selectedHand={selectedHand} setSelectedHand={setSelectedHand} analyzeSpot={analyzeSpot} />
-                ) : viewMode === 'tracker' ? <StatsDashboard />
+                ) : viewMode === 'store' ? <HandStore />
+                  : viewMode === 'tracker' ? <StatsDashboard />
                   : viewMode === 'solver' ? <SolverView />
                   : viewMode === 'tools' ? <ToolsView />
                   : viewMode === 'trainer' ? <SpotTrainer />
@@ -286,7 +291,25 @@ const App: React.FC = () => {
     useEffect(() => { user ? saveUser(user) : removeUser(); }, [user]);
 
     // Load hands on mount
-    useEffect(() => { setHands(getHands()); }, []);
+    useEffect(() => {
+        setHands(getHands());
+
+        // Also try to sync from Jules API if configured/available
+        JulesService.getHandHistories()
+            .then(apiHands => {
+                if (apiHands.length > 0) {
+                     setHands(prev => {
+                        // Merge strategies? For now just append unique ones or replace?
+                        // User requirement: "get all of the hand histories" from API.
+                        // We will prepend API hands that are not in local storage.
+                        const existingIds = new Set(prev.map(h => h.id));
+                        const newHands = apiHands.filter(h => !existingIds.has(h.id));
+                        return [...newHands, ...prev];
+                     });
+                }
+            })
+            .catch(err => console.warn("Jules API unavailable:", err));
+    }, []);
 
     // Toast Management
     const addToast = useCallback((t: Omit<Toast, 'id'>) => {
@@ -295,7 +318,20 @@ const App: React.FC = () => {
     const removeToast = useCallback((id: string) => setToasts(prev => prev.filter(t => t.id !== id)), []);
 
     // Hand Management
-    const loadHands = useCallback(() => setHands(getHands()), []);
+    const loadHands = useCallback(async () => {
+        const localHands = getHands();
+        setHands(localHands);
+        try {
+            const apiHands = await JulesService.getHandHistories();
+            setHands(prev => {
+                const existingIds = new Set(prev.map(h => h.id));
+                const newHands = apiHands.filter(h => !existingIds.has(h.id));
+                return [...newHands, ...prev];
+            });
+        } catch (e) {
+            console.error("Failed to load hands from API", e);
+        }
+    }, []);
     const addHand = useCallback((h: HandHistory) => setHands(p => [h, ...p]), []);
     const updateHand = useCallback((id: string, u: Partial<HandHistory>) => {
         updateHandService(id, u);
@@ -323,17 +359,72 @@ const App: React.FC = () => {
     const analyzeSpot = useCallback((ctx: string) => {
         window.dispatchEvent(new CustomEvent('analyze-spot', { detail: ctx }));
     }, []);
-    const addToQueue = useCallback((v: ChannelVideo) => {
-        const item: QueueItem = { id: v.id, videoUrl: v.url, title: v.title, thumbnail: v.thumbnail, status: 'pending', addedAt: Date.now() };
+    const addToQueue = useCallback((v: ChannelVideo & { searchQuery?: string }) => {
+        const item: QueueItem = {
+            id: v.id || crypto.randomUUID(),
+            videoUrl: v.url,
+            searchQuery: v.searchQuery,
+            title: v.title,
+            thumbnail: v.thumbnail || 'https://via.placeholder.com/320x180.png?text=Poker',
+            status: 'pending',
+            addedAt: Date.now()
+        };
         setQueue(p => [...p, item]);
         addToast({ title: 'Added to Queue', description: v.title, type: 'success' });
-        if (!isQueueProcessing) processQueue();
-    }, [isQueueProcessing, addToast]);
+    }, [addToast]);
+
     const removeFromQueue = useCallback((id: string) => setQueue(p => p.filter(i => i.id !== id)), []);
-    const processQueue = async () => {
-        setIsQueueProcessing(true);
-        setTimeout(() => setIsQueueProcessing(false), 5000); // Sim
-    };
+
+    // Auto-process queue
+    useEffect(() => {
+        if (isQueueProcessing) return;
+        const pendingItem = queue.find(i => i.status === 'pending');
+
+        if (pendingItem) {
+            const processItem = async () => {
+                setIsQueueProcessing(true);
+                setQueue(prev => prev.map(i => i.id === pendingItem.id ? { ...i, status: 'processing' } : i));
+
+                try {
+                    // Decide input: URL or Search Query
+                    const input = pendingItem.searchQuery || pendingItem.videoUrl;
+                    const result = await analyzePokerVideo(null, input, 'Hustler Casino Live', (msg) => console.log(msg), undefined, user?.settings?.ai);
+
+                    if (result.handHistory) {
+                         const hand: HandHistory = {
+                             id: crypto.randomUUID(),
+                             timestamp: Date.now(),
+                             videoUrl: pendingItem.videoUrl,
+                             hero: "Unknown", // Parser usually fills this, but we fallback
+                             stakes: "$100/$200", // Fallback
+                             rawText: result.handHistory,
+                             summary: result.summary || "Imported from Playlist",
+                             potSize: "$0" // Parser would extract this
+                         };
+
+                         // Attempt simple parsing of stakes/pot/hero if rawText is good
+                         const heroMatch = result.handHistory.match(/Dealt to (.*?) \[/);
+                         if (heroMatch) hand.hero = heroMatch[1];
+                         const potMatch = result.handHistory.match(/Total pot (\$.*?) \|/);
+                         if (potMatch) hand.potSize = potMatch[1];
+
+                         setHands(prev => [hand, ...prev]);
+                         addToast({ title: 'Analysis Complete', description: pendingItem.title, type: 'success' });
+                         setQueue(prev => prev.map(i => i.id === pendingItem.id ? { ...i, status: 'completed' } : i));
+                    } else {
+                         throw new Error("No hand history found");
+                    }
+                } catch (e: any) {
+                    console.error("Queue Error:", e);
+                    setQueue(prev => prev.map(i => i.id === pendingItem.id ? { ...i, status: 'error', error: e.message } : i));
+                    addToast({ title: 'Analysis Failed', description: pendingItem.title, type: 'error' });
+                } finally {
+                    setIsQueueProcessing(false);
+                }
+            };
+            processItem();
+        }
+    }, [queue, isQueueProcessing, user?.settings?.ai, addToast]);
 
     const ctx: PokerContextType = {
         user, setUser, hands, loadHands, addHand, updateHand, deleteHand,
