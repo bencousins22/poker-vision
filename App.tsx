@@ -14,8 +14,11 @@ import { SpotTrainer } from './components/SpotTrainer';
 import { SolverView } from './components/SolverView';
 import { ToastContainer } from './components/Toast';
 import { getHands, deleteHand as deleteHandService, updateHand as updateHandService, saveUser, getUser, removeUser, clearDatabase } from './services/storage';
+import { JulesService } from './services/jules';
 import { HandHistory, ViewMode, User, PokerContextType, QueueItem, ChannelVideo, Toast } from './types';
 import { LayoutDashboard, BrainCircuit, User as UserIcon, PlayCircle, CreditCard, Tv, Eye, Sparkles, X, FlaskConical, Target, AlertTriangle, RefreshCcw, PanelLeftClose, PanelLeftOpen, PanelRightClose, MessageSquare, ChevronRight, Grid3X3, Zap, Settings, LogOut } from 'lucide-react';
+import { HandStore } from './components/HandStore';
+import { LayoutDashboard, BrainCircuit, User as UserIcon, PlayCircle, CreditCard, Tv, Eye, Sparkles, X, FlaskConical, Target, AlertTriangle, RefreshCcw, PanelLeftClose, PanelLeftOpen, PanelRightClose, MessageSquare, ChevronRight, Grid3X3, Zap, Database } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 // --- Error Boundary ---
@@ -98,6 +101,7 @@ const AppShell: React.FC = () => {
             <div className="flex-1 flex flex-col gap-3 w-full px-2 overflow-y-auto no-scrollbar items-center">
                 {[
                     { id: 'analyze', icon: Tv, label: 'Vision Engine' },
+                    { id: 'store', icon: Database, label: 'Hand Library' },
                     { id: 'review', icon: PlayCircle, label: 'Replayer' },
                     { id: 'channels', icon: LayoutDashboard, label: 'Channels' },
                     { id: 'tracker', icon: Sparkles, label: 'Statistics' },
@@ -150,7 +154,8 @@ const AppShell: React.FC = () => {
             <Suspense fallback={<div className="flex-1 flex items-center justify-center"><div className="w-8 h-8 border-4 border-poker-gold/30 border-t-poker-gold rounded-full animate-spin"></div></div>}>
                 {viewMode === 'review' ? (
                      <ReviewModeShell selectedHand={selectedHand} setSelectedHand={setSelectedHand} analyzeSpot={analyzeSpot} />
-                ) : viewMode === 'tracker' ? <StatsDashboard />
+                ) : viewMode === 'store' ? <HandStore />
+                  : viewMode === 'tracker' ? <StatsDashboard />
                   : viewMode === 'solver' ? <SolverView />
                   : viewMode === 'tools' ? <ToolsView />
                   : viewMode === 'trainer' ? <SpotTrainer />
@@ -250,12 +255,48 @@ const App: React.FC = () => {
     useEffect(() => { user ? saveUser(user) : removeUser(); }, [user]);
     useEffect(() => { setHands(getHands()); }, []);
 
+    // Load hands on mount
+    useEffect(() => {
+        setHands(getHands());
+
+        // Also try to sync from Jules API if configured/available
+        JulesService.getHandHistories()
+            .then(apiHands => {
+                if (apiHands.length > 0) {
+                     setHands(prev => {
+                        // Merge strategies? For now just append unique ones or replace?
+                        // User requirement: "get all of the hand histories" from API.
+                        // We will prepend API hands that are not in local storage.
+                        const existingIds = new Set(prev.map(h => h.id));
+                        const newHands = apiHands.filter(h => !existingIds.has(h.id));
+                        return [...newHands, ...prev];
+                     });
+                }
+            })
+            .catch(err => console.warn("Jules API unavailable:", err));
+    }, []);
+
     const addToast = useCallback((t: Omit<Toast, 'id'>) => {
         setToasts(prev => [...prev, { ...t, id: crypto.randomUUID() }]);
     }, []);
     const removeToast = useCallback((id: string) => setToasts(prev => prev.filter(t => t.id !== id)), []);
 
     const loadHands = useCallback(() => setHands(getHands()), []);
+    // Hand Management
+    const loadHands = useCallback(async () => {
+        const localHands = getHands();
+        setHands(localHands);
+        try {
+            const apiHands = await JulesService.getHandHistories();
+            setHands(prev => {
+                const existingIds = new Set(prev.map(h => h.id));
+                const newHands = apiHands.filter(h => !existingIds.has(h.id));
+                return [...newHands, ...prev];
+            });
+        } catch (e) {
+            console.error("Failed to load hands from API", e);
+        }
+    }, []);
     const addHand = useCallback((h: HandHistory) => setHands(p => [h, ...p]), []);
     const updateHand = useCallback((id: string, u: Partial<HandHistory>) => {
         updateHandService(id, u);

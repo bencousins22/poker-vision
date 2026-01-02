@@ -1,0 +1,53 @@
+PokerStars Hand #9NNKjWscKWo: Hold'em No Limit ($100/$200/$400 USD) - 2022/09/29 22:00:00 ET
+Table 'Hustler Casino Live' 8-max Seat #5 is the button
+Seat 1: Robbi Jade Lew ($135000 in chips)
+Seat 2: Andy "Stacks" Tsai ($200000 in chips)
+Seat 3: Michael "Mike X" Farid ($50000 in chips)
+Seat 4: Phil Ivey ($300000 in chips)
+Seat 5: Jacob "Rip" Chavez ($70000 in chips)
+Seat 6: Ryusuke Daifuku ($159000 in chips)
+Seat 7: Eric Persson ($583000 in chips)
+Seat 8: Garrett Adelstein ($600000 in chips)
+Ryusuke Daifuku: posts small blind $100
+Eric Persson: posts big blind $200
+Garrett Adelstein: posts third blind $400
+Eric Persson: posts the ante $400
+Robbi Jade Lew: posts straddle $800
+*** HOLE CARDS ***
+Dealt to Robbi Jade Lew [Jc 4h]
+Dealt to Garrett Adelstein [7c 8c]
+Andy "Stacks" Tsai: folds
+Michael "Mike X" Farid: folds
+Phil Ivey: folds
+Jacob "Rip" Chavez: folds
+Ryusuke Daifuku: folds
+Eric Persson: folds
+Garrett Adelstein: raises $2200 to $3000
+Robbi Jade Lew: calls $2200
+*** FLOP *** [10c 10h 9c]
+Garrett Adelstein: bets $2500
+Robbi Jade Lew: calls $2500
+*** TURN *** [10c 10h 9c] [3h]
+Garrett Adelstein: bets $10000
+Robbi Jade Lew: raises $10000 to $20000
+Garrett Adelstein: raises $109500 to $129500 and is all-in
+Robbi Jade Lew: calls $109500 and is all-in
+*** RIVER *** [10c 10h 9c 3h] [9d]
+*** RIVER *** [10c 10h 9c 3h] [As]
+*** SHOW DOWN ***
+Garrett Adelstein: shows [7c 8c] (a pair of Tens)
+Robbi Jade Lew: shows [Jc 4h] (two pair, Tens and Nines)
+Robbi Jade Lew collected $135350 from pot
+Robbi Jade Lew collected $135350 from pot
+*** SUMMARY ***
+Total pot $270700 | Rake $0
+Board [10c 10h 9c 3h 9d]
+Board [10c 10h 9c 3h As]
+Seat 1: Robbi Jade Lew (straddle) showed [Jc 4h] and won ($270700) with two pair, Tens and Nines
+Seat 2: Andy "Stacks" Tsai folded before Flop (didn't bet)
+Seat 3: Michael "Mike X" Farid folded before Flop (didn't bet)
+Seat 4: Phil Ivey folded before Flop (didn't bet)
+Seat 5: Jacob "Rip" Chavez (button) folded before Flop (didn't bet)
+Seat 6: Ryusuke Daifuku (small blind) folded before Flop
+Seat 7: Eric Persson (big blind) folded before Flop
+Seat 8: Garrett Adelstein showed [7c 8c] and lost with a pair of Tens
