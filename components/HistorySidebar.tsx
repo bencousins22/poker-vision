@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { usePoker } from '../App';
-import { Trash2, Database, Search, Filter, CloudUpload, Download, X, Play, DollarSign, Plus, Save, Wand2, Loader2, Calendar } from 'lucide-react';
+import { Trash2, Database, Search, Filter, UploadCloud, Download, X, Play, DollarSign, Plus, Save, Wand2, Loader2, Calendar } from 'lucide-react';
 import { parseHeroHandDetails } from '../services/statsParser';
 import { uploadToGCS, streamToBigQuery } from '../services/gcp';
 import { getPlayerNote, savePlayerNote } from '../services/storage';
@@ -115,7 +115,7 @@ export const HistorySidebar: React.FC = () => {
                     disabled={isSyncing}
                     className={`p-1.5 rounded-lg transition-colors ${isSyncing ? 'text-poker-gold animate-pulse bg-zinc-800' : 'text-zinc-600 hover:text-white hover:bg-zinc-800'}`} 
                  >
-                    {isSyncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CloudUpload className="w-3.5 h-3.5" />}
+                    {isSyncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UploadCloud className="w-3.5 h-3.5" />}
                  </button>
              </Tooltip>
              <Tooltip content="Export CSV" position="bottom">

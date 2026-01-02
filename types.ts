@@ -54,6 +54,7 @@ export interface PlayerStats {
   pfr: number;
   af: number; // Aggression Factor
   afq: number; // Aggression Frequency %
+  aggFreq: number; // ADDED THIS FIELD
   threeBet: number;
   fourBet: number;
   foldTo3Bet: number;

@@ -1,131 +1,111 @@
 
-import { PlayerStats, ExploitAdvice, StrategyCell, SolverSolution } from '../types';
-import { getMatrixCell } from './pokerLogic';
+import { HandHistory } from '../types';
 
-// --- Deterministic Exploit Engine ---
+export interface SolverRequest {
+  pot: number;
+  board: string[]; // e.g., ["Ah", "Ks", "2d"]
+  heroCard1: string;
+  heroCard2: string;
+  villainRange?: string; // Optional range string
+  heroPosition: string;
+  villainPosition: string;
+  stackSize: number;
+  actions: string[]; // List of previous actions
+}
 
-export const calculateExploits = (villain: PlayerStats, street: string, pot: number): ExploitAdvice[] => {
-    const advice: ExploitAdvice[] = [];
+export interface SolverSolution {
+  strategy: {
+    check: number;
+    fold: number;
+    call: number;
+    betSmall: number;
+    betBig: number;
+    allIn: number;
+  };
+  ev: number;
+  bestAction: string;
+  rangeGrid?: Record<string, number>; // e.g., "AA": 1.0, "AKs": 0.5
+}
 
-    // 1. Preflop Exploits
-    if (street === 'Preflop') {
-        if (villain.foldTo3Bet > 65) {
-            advice.push({
-                id: 'overfold_3bet',
-                villainStat: `Fold to 3-Bet: ${villain.foldTo3Bet.toFixed(0)}%`,
-                deviation: 'Villain overfolds to 3-bets.',
-                confidence: 90,
-                action: 'Raise',
-                sizing: '3x - 4x'
-            });
-        }
-        if (villain.vpip > 40 && villain.pfr < 10) {
-            advice.push({
-                id: 'fish_limp',
-                villainStat: `VPIP ${villain.vpip}% / PFR ${villain.pfr}%`,
-                deviation: 'Villain is a calling station.',
-                confidence: 95,
-                action: 'Raise',
-                sizing: 'Isolate Larger (4bb+)'
-            });
-        }
+// NOTE: This service is designed to connect to a hypothetical "Checkmath Poker API"
+// or a similar GTO solver REST API.
+// Since the actual API documentation is not available, this uses a placeholder endpoint.
+//
+// API_URL should be set in your environment variables.
+const API_URL = process.env.SOLVER_API_URL || "https://api.checkmath-poker.com/v1";
+const API_KEY = process.env.SOLVER_API_KEY || "";
+
+export const solveSpot = async (request: SolverRequest): Promise<SolverSolution> => {
+  // Mock mode if no API key is present (for development)
+  if (!API_KEY) {
+    console.warn("Solver API Key missing. Returning mock solution.");
+    return mockSolve(request);
+  }
+
+  try {
+    const response = await fetch(`${API_URL}/solve`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${API_KEY}`
+      },
+      body: JSON.stringify(request)
+    });
+
+    if (!response.ok) {
+      throw new Error(`Solver API Error: ${response.statusText}`);
     }
 
-    // 2. Postflop - CBetting
-    if (villain.foldToCBetFlop > 60) {
-        advice.push({
-            id: 'overfold_cbet',
-            villainStat: `Fold to Flop CBet: ${villain.foldToCBetFlop.toFixed(0)}%`,
-            deviation: 'Villain plays "Fit or Fold".',
-            confidence: 85,
-            action: 'Bet',
-            sizing: '33% Pot (Any two cards)'
-        });
-    }
-
-    // 3. Postflop - Aggression
-    if (villain.af < 1.0 && street !== 'Preflop') {
-        advice.push({
-            id: 'passive_af',
-            villainStat: `Aggression Factor: ${villain.af.toFixed(1)}`,
-            deviation: 'Villain is extremely passive.',
-            confidence: 80,
-            action: 'Fold',
-            sizing: 'Respect all raises'
-        });
-    }
-
-    // 4. Showdown
-    if (villain.wtsd > 35) {
-        advice.push({
-            id: 'calling_station',
-            villainStat: `WTSD: ${villain.wtsd.toFixed(0)}%`,
-            deviation: 'Villain calls down too light.',
-            confidence: 90,
-            action: 'Bet',
-            sizing: 'Value Bet Thin / NO BLUFFS'
-        });
-    }
-
-    return advice;
+    return await response.json();
+  } catch (error) {
+    console.error("Solver Request Failed:", error);
+    throw error;
+  }
 };
 
-// --- GTO Simulation (Mock/Heuristic) ---
-// In a real app, this would call a solver API (Pio/GTO Wizard)
-// Here we procedurally generate a plausible GTO strategy matrix based on board texture.
+// --- Mock Implementation for Development ---
+const mockSolve = (req: SolverRequest): Promise<SolverSolution> => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+        // Simple heuristic for mock data
+        const isStrong = req.heroCard1.includes('A') || req.heroCard1.includes('K') || req.heroCard1 === req.heroCard2;
 
-export const generateGTOStrategy = (board: string[]): Record<string, StrategyCell> => {
-    const strategy: Record<string, StrategyCell> = {};
-    
-    // Simple heuristic for board texture
-    const isWet = board.length >= 3 && (
-        board.join('').match(/[shdc]/g)?.length! >= 3 || // Flush possible
-        ['9','T','J','Q','K','A'].filter(r => board.join('').includes(r)).length >= 3 // Broadways
-    );
+        resolve({
+            strategy: {
+                check: isStrong ? 0.2 : 0.6,
+                fold: isStrong ? 0.0 : 0.4,
+                call: 0.0,
+                betSmall: isStrong ? 0.3 : 0.0,
+                betBig: isStrong ? 0.4 : 0.0,
+                allIn: isStrong ? 0.1 : 0.0
+            },
+            ev: isStrong ? 12.5 : -2.5,
+            bestAction: isStrong ? 'betBig' : 'check',
+            rangeGrid: generateMockGrid(isStrong)
+        });
+    }, 800);
+  });
+};
+
+const generateMockGrid = (biasStrong: boolean): Record<string, number> => {
+    const grid: Record<string, number> = {};
+    const ranks = "AKQJT98765432";
+    const suits = ["s", "o"]; // s=suited, o=offsuit (or pairs)
 
     for (let i = 0; i < 13; i++) {
         for (let j = 0; j < 13; j++) {
-            const hand = getMatrixCell(i, j);
-            
-            // Randomize slightly to look like a solver, but bias based on hand strength logic
-            // Pair logic
-            let ev = 0;
-            let checkFreq = 0.5;
-            let betFreq = 0.5;
-            
-            if (i === j) { // Pocket Pair
-                if (i < 3) { ev = 50; betFreq = 0.8; checkFreq = 0.2; } // AA, KK, QQ
-                else if (i > 8) { ev = 5; betFreq = 0.1; checkFreq = 0.9; } // 22-66
-            } else if (i < j) { // Suited
-                if (i < 2 && j < 5) { ev = 30; betFreq = 0.6; checkFreq = 0.4; } // High Suited
-                else { ev = -5; betFreq = 0.2; checkFreq = 0.3; } // Trash suited
-            } else { // Offsuit
-                ev = -10; betFreq = 0.1; checkFreq = 0.2; // Mostly fold/check
-            }
+            const r1 = ranks[i];
+            const r2 = ranks[j];
+            let hand = "";
+            if (i < j) hand = r1 + r2 + "s";
+            else if (i > j) hand = r2 + r1 + "o";
+            else hand = r1 + r2;
 
-            // Adjust for wet board (Check more often oop generally in GTO)
-            if (isWet) {
-                checkFreq += 0.2;
-                betFreq -= 0.2;
-            }
-
-            // Normalize
-            const totalAction = checkFreq + betFreq;
-            const foldFreq = Math.max(0, 1 - totalAction);
-
-            strategy[hand] = {
-                hand,
-                ev: parseFloat(ev.toFixed(2)),
-                frequencies: {
-                    fold: foldFreq,
-                    check: checkFreq,
-                    call: 0,
-                    betSmall: betFreq * 0.4,
-                    betLarge: betFreq * 0.6,
-                    raise: 0
-                }
-            };
+            // Random freq based on bias
+            let freq = Math.random();
+            if (biasStrong && (r1 === 'A' || r1 === 'K' || i === j)) freq += 0.5;
+            grid[hand] = Math.min(1, Math.max(0, freq));
         }
     }
-    return strategy;
+    return grid;
 };
