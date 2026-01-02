@@ -4,6 +4,11 @@ import { usePoker } from '../App';
 import { HandHistory, AnalysisStatus } from '../types';
 import { Search, Filter, Download, Trash2, Eye, PlayCircle, Calendar, DollarSign, User, MoreHorizontal, ArrowUpDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { PLAYLIST_TITLES } from './playlistData';
+
+export const HandStore: React.FC = () => {
+    const { hands, deleteHand, setSelectedHand, setViewMode, addToQueue, isQueueProcessing, queue } = usePoker();
 
 export const HandStore: React.FC = () => {
     const { hands, deleteHand, setSelectedHand, setViewMode } = usePoker();
@@ -31,6 +36,32 @@ export const HandStore: React.FC = () => {
 
     const uniqueStakes = useMemo(() => Array.from(new Set(hands.map(h => h.stakes))), [hands]);
 
+    // Chart Data
+    const chartData = useMemo(() => {
+        return [...hands]
+            .sort((a, b) => a.timestamp - b.timestamp)
+            .map((h, i) => ({
+                name: i + 1,
+                pot: parseInt(h.potSize.replace(/[^0-9]/g, '')) || 0,
+                date: new Date(h.timestamp).toLocaleDateString()
+            }));
+    }, [hands]);
+
+    const handleBulkImport = async () => {
+         try {
+             if (confirm(`Import ${PLAYLIST_TITLES.length} videos from the playlist? This will process in the background.`)) {
+                PLAYLIST_TITLES.forEach(title => {
+                    addToQueue({
+                        id: crypto.randomUUID(),
+                        title: title,
+                        url: '', // No URL known, system will use searchQuery
+                        thumbnail: '',
+                        views: '0',
+                        uploaded: new Date().toISOString(),
+                        searchQuery: title
+                    });
+                });
+             }
     const handleBulkImport = async () => {
          try {
              // In a real scenario, we might let the user upload this or paste it.
@@ -53,6 +84,58 @@ export const HandStore: React.FC = () => {
          }
     };
 
+    const pendingCount = useMemo(() => queue.filter(i => i.status === 'pending' || i.status === 'processing').length, [queue]);
+
+    return (
+        <div className="flex flex-col h-full bg-[#0a0a0a] text-white p-4 md:p-6 overflow-hidden">
+             {/* Chart Header - Hidden on mobile for space */}
+            {hands.length > 0 && (
+                <div className="hidden md:block h-48 mb-6 w-full bg-zinc-900/30 rounded-2xl border border-zinc-800 p-4 relative overflow-hidden shrink-0 animate-in fade-in slide-in-from-top-4">
+                    <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2 absolute top-4 left-4 z-10">Activity Overview</h3>
+                    <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={chartData}>
+                            <defs>
+                                <linearGradient id="colorPot" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#d4af37" stopOpacity={0.1}/>
+                                    <stop offset="95%" stopColor="#d4af37" stopOpacity={0}/>
+                                </linearGradient>
+                            </defs>
+                            <Tooltip
+                                contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '8px' }}
+                                itemStyle={{ color: '#fff' }}
+                                labelStyle={{ display: 'none' }}
+                            />
+                            <Area type="monotone" dataKey="pot" stroke="#d4af37" strokeWidth={2} fillOpacity={1} fill="url(#colorPot)" />
+                        </AreaChart>
+                    </ResponsiveContainer>
+                </div>
+            )}
+
+            {/* Header */}
+            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-8 shrink-0">
+                <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-3">
+                        <h1 className="text-3xl font-black text-white tracking-tight">Hand Library</h1>
+                        {pendingCount > 0 && (
+                             <div className="px-2 py-0.5 rounded-full bg-poker-gold/10 border border-poker-gold/20 text-poker-gold text-[10px] font-bold animate-pulse">
+                                {pendingCount} Processing...
+                            </div>
+                        )}
+                    </div>
+                    <p className="text-zinc-500 text-sm">Manage and analyze your collected hand histories.</p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                    <button
+                        onClick={handleBulkImport}
+                        disabled={isQueueProcessing && pendingCount > 10}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl text-sm font-bold transition-all border border-zinc-700"
+                    >
+                        {isQueueProcessing ? <span className="animate-spin">⏳</span> : <Download className="w-4 h-4" />}
+                        Import Playlist
+                    </button>
+
+                    <div className="relative group flex-1 md:flex-none">
     return (
         <div className="flex flex-col h-full bg-[#0a0a0a] text-white p-6 overflow-hidden">
             {/* Header */}
@@ -74,6 +157,7 @@ export const HandStore: React.FC = () => {
                             placeholder="Search hands..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
+                            className="bg-zinc-900 border border-zinc-800 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-poker-gold/50 focus:ring-1 focus:ring-poker-gold/50 w-full md:w-64 transition-all shadow-inner"
                             className="bg-zinc-900 border border-zinc-800 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-poker-gold/50 focus:ring-1 focus:ring-poker-gold/50 w-64 transition-all"
                         />
                     </div>

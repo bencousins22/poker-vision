@@ -180,6 +180,7 @@ export type QueueStatus = 'pending' | 'processing' | 'completed' | 'error';
 export interface QueueItem {
   id: string;
   videoUrl: string;
+  searchQuery?: string;
   title: string;
   thumbnail: string;
   status: QueueStatus;

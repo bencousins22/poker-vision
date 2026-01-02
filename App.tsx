@@ -15,6 +15,8 @@ import { SolverView } from './components/SolverView';
 import { ToastContainer } from './components/Toast';
 import { getHands, deleteHand as deleteHandService, updateHand as updateHandService, saveUser, getUser, removeUser, clearDatabase } from './services/storage';
 import { JulesService } from './services/jules';
+import { analyzePokerVideo } from './services/gemini';
+import { HandHistory, ViewMode, User, PokerContextType, QueueItem, ChannelVideo, Toast } from './types';
 import { HandHistory, ViewMode, User, PokerContextType, QueueItem, ChannelVideo, Toast } from './types';
 import { LayoutDashboard, BrainCircuit, User as UserIcon, PlayCircle, CreditCard, Tv, Eye, Sparkles, X, FlaskConical, Target, AlertTriangle, RefreshCcw, PanelLeftClose, PanelLeftOpen, PanelRightClose, MessageSquare, ChevronRight, Grid3X3, Zap, Settings, LogOut } from 'lucide-react';
 import { HandStore } from './components/HandStore';
@@ -72,14 +74,25 @@ const NavItem = ({ id, icon: Icon, label, active, onClick }: any) => (
 
 const AppShell: React.FC = () => {
   const { user, setUser, selectedHand, setSelectedHand, viewMode, setViewMode, analyzeSpot } = usePoker();
-  const [leftOpen, setLeftOpen] = useState(true);
-  const [rightOpen, setRightOpen] = useState(true);
+    const [leftOpen, setLeftOpen] = useState(window.innerWidth > 1024);
+    const [rightOpen, setRightOpen] = useState(window.innerWidth > 1280);
   const [showAuth, setShowAuth] = useState(false);
 
+    // Auto-open sidebars on specific actions and handle resize
   useEffect(() => {
     const handleAnalyzeSpot = () => setRightOpen(true);
+        const handleResize = () => {
+             if (window.innerWidth < 1024) {
+                 setLeftOpen(false);
+                 setRightOpen(false);
+             }
+        };
     window.addEventListener('analyze-spot', handleAnalyzeSpot);
-    return () => window.removeEventListener('analyze-spot', handleAnalyzeSpot);
+        window.addEventListener('resize', handleResize);
+        return () => {
+            window.removeEventListener('analyze-spot', handleAnalyzeSpot);
+            window.removeEventListener('resize', handleResize);
+        };
   }, []);
 
   if (!user) {
@@ -92,6 +105,22 @@ const AppShell: React.FC = () => {
   }
 
   return (
+    <div 
+        className="flex h-screen w-screen bg-[#050505] text-white overflow-hidden font-sans select-none"
+        style={{
+            transform: `scale(${appScale})`,
+            transformOrigin: 'top center',
+            width: `${100/appScale}vw`,
+            height: `${100/appScale}vh`
+        }}
+    >
+        {/* Navigation Rail - Auto Hiding */}
+        {/* Trigger Zone */}
+        <div className="fixed left-0 top-0 bottom-0 w-2 z-[60] peer hover:bg-poker-gold/50 transition-colors duration-300 cursor-pointer" />
+        
+        {/* Nav Bar - Always visible on larger screens for robustness */}
+        <nav className="fixed left-0 top-0 h-full w-16 flex flex-col items-center py-6 border-r border-zinc-800/80 bg-[#050505]/95 backdrop-blur-md z-50 shrink-0 gap-6 translate-x-0 transition-transform duration-300 shadow-[10px_0_30px_rgba(0,0,0,0.5)]">
+            <div className="w-10 h-10 bg-gradient-to-br from-poker-gold to-amber-700 rounded-xl flex items-center justify-center shadow-lg shrink-0 cursor-pointer hover:scale-105 transition-transform" onClick={() => setViewMode('analyze')}>
     <div className="flex h-screen w-screen bg-background text-white overflow-hidden font-sans select-none">
         {/* Navigation Rail */}
         <nav className="w-16 flex flex-col items-center py-6 border-r border-border bg-surface/50 backdrop-blur-md z-50 shrink-0 gap-6">
@@ -116,8 +145,14 @@ const AppShell: React.FC = () => {
                         active={viewMode === item.id} 
                         onClick={() => {
                             setViewMode(item.id as ViewMode);
-                            if (item.id === 'review') setLeftOpen(true);
-                            if (item.id === 'strategy') setRightOpen(true);
+                            if (window.innerWidth >= 1024) {
+                                if (item.id === 'review') setLeftOpen(true);
+                                if (item.id === 'strategy') setRightOpen(true);
+                            } else {
+                                // On mobile, close sidebars when navigating
+                                setLeftOpen(false);
+                                setRightOpen(false);
+                            }
                         }} 
                     />
                 ))}
@@ -128,6 +163,13 @@ const AppShell: React.FC = () => {
             </div>
         </nav>
 
+        {/* Spacer for fixed nav */}
+        <div className="w-16 shrink-0" />
+
+        {/* Left Sidebar (Hand History) */}
+        <div className={`relative flex flex-col border-r border-zinc-800 bg-[#050505] transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)] z-30 ${leftOpen ? 'w-80 translate-x-0' : 'w-0 -translate-x-full opacity-0'}`}>
+            <div className="w-80 h-full overflow-hidden">
+                <HistorySidebar />
         {/* Left Sidebar (Hand History) - Collapsible */}
         <div className={`relative flex flex-col border-r border-border bg-surface transition-all duration-300 ease-in-out overflow-hidden ${leftOpen ? 'w-80 opacity-100' : 'w-0 opacity-0'}`}>
             <div className="w-80 h-full flex flex-col">
@@ -323,13 +365,83 @@ const App: React.FC = () => {
     const analyzeSpot = useCallback((ctx: string) => {
         window.dispatchEvent(new CustomEvent('analyze-spot', { detail: ctx }));
     }, []);
-    const addToQueue = useCallback((v: ChannelVideo) => {
-        const item: QueueItem = { id: v.id, videoUrl: v.url, title: v.title, thumbnail: v.thumbnail, status: 'pending', addedAt: Date.now() };
+    const addToQueue = useCallback((v: ChannelVideo & { searchQuery?: string }) => {
+        const item: QueueItem = {
+            id: v.id || crypto.randomUUID(),
+            videoUrl: v.url,
+            searchQuery: v.searchQuery,
+            title: v.title,
+            thumbnail: v.thumbnail || 'https://via.placeholder.com/320x180.png?text=Poker',
+            status: 'pending',
+            addedAt: Date.now()
+        };
         setQueue(p => [...p, item]);
         addToast({ title: 'Added to Queue', description: v.title, type: 'success' });
-        if (!isQueueProcessing) processQueue();
-    }, [isQueueProcessing, addToast]);
+    }, [addToast]);
+
     const removeFromQueue = useCallback((id: string) => setQueue(p => p.filter(i => i.id !== id)), []);
+
+    // Auto-process queue
+    useEffect(() => {
+        if (isQueueProcessing) return;
+        const pendingItem = queue.find(i => i.status === 'pending');
+
+        if (pendingItem) {
+            const processItem = async () => {
+                setIsQueueProcessing(true);
+                setQueue(prev => prev.map(i => i.id === pendingItem.id ? { ...i, status: 'processing' } : i));
+
+                try {
+                    // Decide input: URL or Search Query
+                    const input = pendingItem.searchQuery || pendingItem.videoUrl;
+
+                    // Explicitly define callbacks to avoid type mismatch confusion
+                    const progressLogger = (msg: string) => console.log(`[Queue ${pendingItem.id}]: ${msg}`);
+
+                    const result = await analyzePokerVideo(
+                        null,
+                        input,
+                        'Hustler Casino Live',
+                        progressLogger,
+                        undefined,
+                        user?.settings?.ai
+                    );
+
+                    if (result.handHistory) {
+                         const hand: HandHistory = {
+                             id: crypto.randomUUID(),
+                             timestamp: Date.now(),
+                             videoUrl: pendingItem.videoUrl,
+                             hero: "Unknown", // Parser usually fills this, but we fallback
+                             stakes: "$100/$200", // Fallback
+                             rawText: result.handHistory,
+                             summary: result.summary || "Imported from Playlist",
+                             potSize: "$0" // Parser would extract this
+                         };
+
+                         // Attempt simple parsing of stakes/pot/hero if rawText is good
+                         const heroMatch = result.handHistory.match(/Dealt to (.*?) \[/);
+                         if (heroMatch) hand.hero = heroMatch[1];
+                         const potMatch = result.handHistory.match(/Total pot (\$.*?) \|/);
+                         if (potMatch) hand.potSize = potMatch[1];
+
+                         setHands(prev => [hand, ...prev]);
+                         addToast({ title: 'Analysis Complete', description: pendingItem.title, type: 'success' });
+                         setQueue(prev => prev.map(i => i.id === pendingItem.id ? { ...i, status: 'completed' } : i));
+                    } else {
+                         throw new Error("No hand history found");
+                    }
+                } catch (e: any) {
+                    console.error("Queue Error:", e);
+                    setQueue(prev => prev.map(i => i.id === pendingItem.id ? { ...i, status: 'error', error: e.message } : i));
+                    addToast({ title: 'Analysis Failed', description: pendingItem.title, type: 'error' });
+                } finally {
+                    setIsQueueProcessing(false);
+                }
+            };
+            processItem();
+        }
+    }, [queue, isQueueProcessing, user?.settings?.ai, addToast]);
     const processQueue = async () => {
         setIsQueueProcessing(true);
         setTimeout(() => setIsQueueProcessing(false), 5000);

@@ -147,6 +147,12 @@ export const AnalysisView: React.FC = () => {
       return;
     }
 
+    // Basic validation
+    if (url && !ReactPlayer.canPlay(url)) {
+        setError("Invalid URL format or unsupported video source.");
+        return;
+    }
+
     setStatus(AnalysisStatus.PROCESSING);
     setProgressStep(1);
     setError(null);
@@ -281,7 +287,7 @@ export const AnalysisView: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-full">
             
             {/* LEFT: Controls */}
-            <div className="lg:col-span-3 flex flex-col h-full overflow-hidden">
+            <div className="lg:col-span-3 flex flex-col h-full overflow-hidden order-2 lg:order-1">
                 <div className="bg-gradient-to-b from-zinc-900/50 to-zinc-950/50 border border-white/5 rounded-2xl p-4 flex flex-col gap-4 shadow-xl backdrop-blur-md h-full relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-poker-emerald/5 rounded-full blur-2xl -mr-16 -mt-16 pointer-events-none"></div>
 
@@ -397,7 +403,7 @@ export const AnalysisView: React.FC = () => {
             </div>
 
             {/* CENTER: Video & HUD */}
-            <div className="lg:col-span-6 flex flex-col h-full overflow-hidden gap-4">
+            <div className="lg:col-span-6 flex flex-col h-full overflow-hidden gap-4 order-1 lg:order-2">
                 
                 {status !== AnalysisStatus.IDLE && (
                     <div className="bg-zinc-900/50 p-4 rounded-xl border border-zinc-800 animate-slide-up">
@@ -528,7 +534,7 @@ export const AnalysisView: React.FC = () => {
             </div>
 
             {/* RIGHT: Output & Tabs */}
-            <div className="lg:col-span-3 flex flex-col h-full gap-4 overflow-hidden">
+            <div className="lg:col-span-3 flex flex-col h-full gap-4 overflow-hidden order-3">
                 
                 {/* Tab Switcher */}
                 <div className="flex bg-zinc-900 p-1 rounded-xl border border-zinc-800 shrink-0">
